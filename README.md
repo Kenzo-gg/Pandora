@@ -51,7 +51,7 @@ Pandora is a Sales and Inventory Management System designed to help a store reco
 
 | Week | Dates | Target | Status |
 | --- | --- | --- | --- |
-| **Week 1** | Oct 21–27 | Setup, database design, diagrams, mockups | ⬜ Not confirmed |
+| **Week 1** | Oct 21–27 | Setup, database design, diagrams, mockups | 🟡 In progress |
 | **Week 2** | Oct 28–Nov 3 | User roles, product and supplier management | ⬜ Not confirmed |
 | **Week 3** | Nov 4–10 | Sales, receipts, purchases, automatic stock updates | ⬜ Not confirmed |
 | **Week 4** | Nov 11–17 | Reports, export, backup, security, testing | ⬜ Not confirmed |

@@ -41,9 +41,9 @@ Pandora is a Sales and Inventory Management System designed to help a store reco
 
 | Team member | Primary responsibility | Main deliverable |
 | --- | --- | --- |
-| **Member 1:** _Name_ | Database, backend, login, access control, integration | Database models and Crow's Foot ERD |
-| **Member 2:** _Name_ | Frontend, products, inventory interface, sales | User interface, receipts, Use Case Diagram |
-| **Member 3:** _Name_ | Suppliers, purchasing, reports, exports | Restocking, reports, Data Flow Diagram (DFD) |
+| **Member 1:** Charles Joaquin N. Alabastro | Database, backend, login, access control, integration | Database models and Crow's Foot ERD |
+| **Member 2:** John Emmanuel P. Pablico | Frontend, products, inventory interface, sales | User interface, receipts, Use Case Diagram |
+| **Member 3:** Daven Rupert Y. Villar | Suppliers, purchasing, reports, exports | Restocking, reports, Data Flow Diagram (DFD) |
 
 **Shared responsibilities:** testing, documentation, reviewing changes, troubleshooting, PowerPoint, and live demonstration.
 
@@ -64,19 +64,19 @@ Pandora is a Sales and Inventory Management System designed to help a store reco
 ### Week 1 — Planning and System Design (Oct 21–27)
 
 **Member 1 — Database & Backend**
-- [ ] Create the Django project and GitHub repository.
-- [ ] Configure the development environment and MySQL connection.
+- [X] Create the Django project and GitHub repository.
+- [X] Configure the development environment and MySQL connection.
 - [ ] Design a normalized database schema with primary and foreign keys.
-- [ ] Draw the ERD with Crow's Foot notation and relationship cardinalities.
+- [X] Draw the ERD with Crow's Foot notation and relationship cardinalities.
 
 **Member 2 — Frontend & Sales**
-- [ ] Draft user interface mockups (login, dashboard, products, checkout).
+- [X] Draft user interface mockups (login, dashboard, products, checkout).
 - [ ] Set up the base HTML layout and Bootstrap styling.
-- [ ] Draw the Use Case Diagram for Administrator, Cashier, and Inventory Clerk.
+- [X] Draw the Use Case Diagram for Administrator, Cashier, and Inventory Clerk.
 
 **Member 3 — Purchasing & Reports**
-- [ ] Identify fields needed for supplier, purchase, and report records.
-- [ ] Draw the Data Flow Diagram (DFD).
+- [X] Identify fields needed for supplier, purchase, and report records.
+- [X] Draw the Data Flow Diagram (DFD).
 - [ ] Prepare realistic sample products, suppliers, and transactions.
 
 **Week 1 outcome:** Agreed models, diagrams, mockups, and a running starter project.
@@ -84,7 +84,7 @@ Pandora is a Sales and Inventory Management System designed to help a store reco
 ### Week 2 — User Accounts, Products, and Suppliers (Oct 28–Nov 3)
 
 **Member 1 — Database & Backend**
-- [ ] Create Django models, migrations, and database relationships.
+- [X] Create Django models, migrations, and database relationships.
 - [ ] Implement login/logout and unique user accounts.
 - [ ] Set up role-based permissions for Administrator, Cashier, and Inventory Clerk.
 

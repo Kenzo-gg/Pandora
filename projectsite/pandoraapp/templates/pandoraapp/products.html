@@ -1,0 +1,20 @@
+{% extends 'pandoraapp/base.html' %}
+{% block content %}
+<h1>Products</h1>
+<form method="get">
+  <label for="search">Search by name, SKU, brand or category</label>
+  <input id="search" name="q" value="{{ q }}" maxlength="100" type="search">
+  <button>Search</button>
+</form>
+<table>
+  <thead><tr><th>SKU</th><th>Product</th><th>Category</th><th>Price</th><th>Available</th></tr></thead>
+  <tbody>
+  {% for product in page %}
+    <tr><td>{{ product.sku }}</td><td>{{ product.name }}<br>{{ product.brand }}</td>
+      <td>{{ product.category__name }}</td><td>₱{{ product.selling_price }}</td>
+      <td>{% if product.current_stock == 0 %}Out of stock{% else %}{{ product.current_stock }}{% endif %}</td></tr>
+  {% empty %}<tr><td colspan="5">No products match your search.</td></tr>{% endfor %}
+  </tbody>
+</table>
+{% include 'pandoraapp/pagination.html' %}
+{% endblock %}

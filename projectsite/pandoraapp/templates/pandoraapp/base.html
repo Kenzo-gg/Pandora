@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Pandora</title>
+<style>
+:root { color-scheme:light; --ink:#202741; --green:#334fb0; --line:#e1e5ef }
+* { box-sizing:border-box }
+body { margin:0; background:#f5f6fa; color:var(--ink); font:1rem/1.55 Poppins,"Segoe UI",sans-serif }
+nav { min-height:4rem; padding:.75rem max(5vw,1rem); display:flex; align-items:center; gap:1rem; background:#243d91; color:white }
+nav a { margin-right:auto; color:white; font:bold 1.65rem Georgia,serif; text-decoration:none }
+nav span { overflow-wrap:anywhere; min-width:0 }
+nav form { flex-shrink:0 }
+nav button { background:transparent; border-color:#98b6a8; padding:.35rem .8rem }
+main { max-width:76rem; margin:auto; padding:clamp(1rem,4vw,3.5rem); overflow-x:auto }
+h1 { margin:0 0 1.5rem; font:normal clamp(2.2rem,5vw,4rem)/1.12 Georgia,serif; letter-spacing:-.04em; overflow-wrap:anywhere }
+h2 { margin:0 0 .7rem; font-size:1.15rem }
+section { margin:2rem 0 }
+.actions { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,13rem),1fr)); gap:.75rem }
+.actions a { display:flex; align-items:center; justify-content:space-between; gap:1rem; min-height:5rem; padding:1rem 1.2rem; border:1px solid var(--line); border-radius:.65rem; background:white; color:var(--ink); font-weight:600; text-decoration:none }
+.actions span { color:var(--green) }
+.actions a:hover { border-color:var(--green); background:#eef1ff }
+a { color:var(--green) }
+table { width:100%; border-collapse:collapse; background:white }
+td,th { text-align:left; padding:.75rem 1rem; border-bottom:1px solid var(--line) }
+th { background:#f0f2fa }
+fieldset { min-width:0; margin:1rem 0; background:white; border:1px solid var(--line); border-radius:.65rem; padding:1rem }
+input,select,textarea,button { max-width:100%; font:inherit; border:1px solid #899d92; border-radius:.4rem; padding:.45rem .7rem }
+button { background:var(--green); color:white; cursor:pointer }
+button:hover { background:#253979 }
+button + button { margin-left:.5rem }
+:focus-visible { outline:3px solid #be7819; outline-offset:3px }
+.errorlist { color:#982f28 }
+@media(max-width:600px) { nav { gap:.65rem } main { padding-top:1.75rem } .actions a { min-height:3.5rem } }
+h1,nav a {font-family:Inter,"Segoe UI",sans-serif;font-weight:700}
+h1 {font-size:clamp(1.8rem,3vw,2.45rem)}
+.dash-head,.rank,h2 {display:flex;align-items:center;justify-content:space-between;gap:.8rem}
+.dash-head {margin-bottom:1.5rem}.dash-head h1 {margin:0}
+small,.dash-head span {color:#536078;font-size:.8rem;font-weight:500}
+.metrics {display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,12rem),1fr));gap:1rem}
+.metrics article,.dashboard section {background:white;border:1px solid var(--line);border-radius:14px;padding:1.25rem}
+.metrics article:first-child {background:linear-gradient(115deg,#4364cf,#293e9d);color:white}
+.metrics strong {display:block;font-size:1.85rem;letter-spacing:-.04em}
+.dashboard {display:grid;grid-template-columns:minmax(0,2fr) minmax(16rem,1fr);gap:1rem;margin-top:1rem}
+.dashboard:has(.overview:empty),.dashboard:has(.overview:not(:has(section))) {grid-template-columns:1fr}
+.overview:not(:has(section)) {display:none}
+.dashboard section {margin:0 0 1rem}.actions {display:flex;flex-direction:column;gap:.35rem}
+.actions a {min-height:2.6rem;padding:.5rem .75rem;background:#f5f6fc;border:0}
+.chart {display:flex;gap:.5rem;overflow-x:auto;padding-top:1rem}
+.column {flex:1;text-align:center}.track {height:7rem;display:flex;align-items:flex-end;justify-content:center;border-bottom:1px solid var(--line)}
+.track i {width:min(65%,2.5rem);background:#526cc7;border-radius:4px 4px 0 0}
+.rank {padding:.65rem 0;border-top:1px solid var(--line)}
+.scroll {overflow-x:auto}.status {background:#edf1ff;color:#32488a;padding:.2rem .5rem;border-radius:1rem}
+@media(max-width:760px){.dashboard {grid-template-columns:1fr}.dashboard aside {grid-row:1}.metrics {grid-template-columns:repeat(2,minmax(0,1fr))}.metrics strong {font-size:1.35rem;overflow-wrap:anywhere}}
+</style></head>
+<body><nav><a href="{% url 'pandoraapp:home' %}">Pandora</a>{% if user.is_authenticated %}<span>{{ user.username }}</span><form method="post" action="{% url 'logout' %}">{% csrf_token %}<button>Log out</button></form>{% endif %}</nav><main>{% block content %}{% endblock %}</main></body></html>
+

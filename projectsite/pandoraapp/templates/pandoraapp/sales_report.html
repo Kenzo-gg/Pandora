@@ -1,0 +1,29 @@
+{% extends 'pandoraapp/base.html' %}
+{% block content %}
+<h1>Sales summary</h1>
+<form method="get">
+  {{ form.as_p }}
+  <button>View summary</button>
+  <button name="format" value="pdf">Download PDF</button>
+</form>
+{% if report %}
+<p>{{ report.start }} to {{ report.end }} inclusive · {{ report.period|title }} · PHP</p>
+<p>Completed sales · Business dates Asia/Manila · Generated {{ report.generated }}</p>
+<p>Weekly periods run Monday–Sunday. Totals include only selected dates.</p>
+<table>
+  <thead><tr><th>Period</th><th>Transactions</th><th>Units</th><th>Revenue (PHP)</th></tr></thead>
+  <tbody>{% for row in report.rows %}
+    <tr><td>{{ row.label }}</td><td>{{ row.transactions }}</td><td>{{ row.units }}</td><td>{{ row.revenue|floatformat:2 }}</td></tr>
+  {% empty %}<tr><td colspan="4">No completed sales in this period.</td></tr>{% endfor %}</tbody>
+  <tfoot><tr><th>Total</th><td>{{ report.totals.transactions }}</td><td>{{ report.totals.units }}</td><td>{{ report.totals.revenue|floatformat:2 }}</td></tr></tfoot>
+</table>
+<h2>Products sold</h2>
+<table>
+  <thead><tr><th>SKU</th><th>Product</th><th>Units sold</th><th>Revenue (PHP)</th></tr></thead>
+  <tbody>{% for product in report.products %}
+    <tr><td>{{ product.sku }}</td><td>{{ product.name }}</td><td>{{ product.units }}</td><td>{{ product.revenue|floatformat:2 }}</td></tr>
+  {% empty %}<tr><td colspan="4">No products sold in this period.</td></tr>{% endfor %}</tbody>
+  <tfoot><tr><th colspan="2">Total</th><td>{{ report.totals.units }}</td><td>{{ report.totals.revenue|floatformat:2 }}</td></tr></tfoot>
+</table>
+{% endif %}
+{% endblock %}

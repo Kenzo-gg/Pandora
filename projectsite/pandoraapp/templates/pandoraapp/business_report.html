@@ -1,0 +1,11 @@
+{% extends 'pandoraapp/base.html' %}
+{% block content %}
+<h1>{{ title }}</h1>
+<form method="get">{{ form.as_p }}<button>View report</button><button name="format" value="pdf">Download PDF</button></form>
+{% if report %}
+{% for note in report.notes %}<p>{{ note }}</p>{% endfor %}
+<table><thead><tr>{% for heading in report.headings %}<th>{{ heading }}</th>{% endfor %}</tr></thead>
+<tbody>{% for row in report.rows %}<tr>{% for cell in row %}<td>{{ cell }}</td>{% endfor %}</tr>
+{% empty %}<tr><td colspan="8">No records match the selected filters.</td></tr>{% endfor %}</tbody></table>
+{% endif %}
+{% endblock %}

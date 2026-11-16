@@ -1,0 +1,7 @@
+{% extends 'pandoraapp/base.html' %}{% block content %}
+<h1>New {{ kind }}</h1><form method="post">{% csrf_token %}{{ header.as_p }}{{ lines.management_form }}{{ lines.non_form_errors }}
+<div id="lines">{% for form in lines %}<fieldset>{{ form.as_p }}</fieldset>{% endfor %}</div>
+<template id="empty-line"><fieldset>{{ lines.empty_form.as_p }}</fieldset></template>
+<button type="button" id="add-line">Add item</button><button>Save draft</button></form>
+<script>const count=document.getElementById('id_items-TOTAL_FORMS');const add=document.getElementById('add-line');add.addEventListener('click',()=>{const index=Number(count.value);if(index>=50)return;document.getElementById('lines').insertAdjacentHTML('beforeend',document.getElementById('empty-line').innerHTML.replaceAll('__prefix__',String(index)));count.value=index+1;add.disabled=index+1>=50;});</script>
+{% endblock %}

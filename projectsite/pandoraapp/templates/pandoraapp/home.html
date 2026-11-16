@@ -1,0 +1,50 @@
+{% extends 'pandoraapp/base.html' %}
+{% block content %}
+<header class="dash-head"><h1>Dashboard</h1><span>{% now "F Y" %}</span></header>
+<div class="metrics">
+{% for label,value,money in cards %}<article><span>{{ label }}</span><strong>{% if money %}&#8369;{{ value|floatformat:"2g" }}{% else %}{{ value }}{% endif %}</strong></article>{% endfor %}
+</div>
+<div class="dashboard"><div class="overview">
+{% if financial_access %}
+<section><h2>Sales trend <small>Last 7 days</small></h2>
+<div class="chart">{% for day,value in days %}<div class="column"><small>{{ value|floatformat:"2g" }}</small><div class="track"><i style="height:{% widthratio value peak 100 %}%"></i></div><small>{{ day|date:"D" }}</small></div>{% endfor %}</div></section>
+<section><h2>Top products <small>Units sold this month</small></h2>
+{% for product in top_products %}<div class="rank"><span>{{ product.product__name }}</span><b>{{ product.units }}</b></div>{% empty %}<p>No completed sales this month.</p>{% endfor %}</section>{% endif %}
+{% if sale_history_access or purchase_history_access %}<section><h2>Recent transactions</h2><div class="scroll"><table><thead><tr><th>Reference</th><th>Type</th><th>Date</th><th>Status</th></tr></thead><tbody>
+{% for date,reference,type,status in recent %}<tr><td>{{ reference }}</td><td>{{ type }}</td><td>{{ date|date:"M j" }}</td><td><span class="status">{{ status }}</span></td></tr>{% empty %}<tr><td colspan="4">No transactions yet.</td></tr>{% endfor %}</tbody></table></div></section>{% endif %}
+</div><aside>
+{% if sale_create_access or purchase_create_access or sale_history_access or purchase_history_access %}
+<section>
+  <h2>Transactions</h2>
+  <div class="actions">
+    {% if sale_create_access %}<a href="{% url 'pandoraapp:sale_create' %}">New sale<span aria-hidden="true"> &rarr;</span></a>{% endif %}
+    {% if purchase_create_access %}<a href="{% url 'pandoraapp:purchase_create' %}">New purchase<span aria-hidden="true"> &rarr;</span></a>{% endif %}
+    {% if sale_history_access %}<a href="{% url 'pandoraapp:sale_history' %}">Sales history<span aria-hidden="true"> &rarr;</span></a>{% endif %}
+    {% if purchase_history_access %}<a href="{% url 'pandoraapp:purchase_history' %}">Purchase history<span aria-hidden="true"> &rarr;</span></a>{% endif %}
+  </div>
+</section>
+{% endif %}
+{% if catalog_access or inventory_access %}
+<section>
+  <h2>Inventory</h2>
+  <div class="actions">
+    {% if catalog_access %}<a href="{% url 'pandoraapp:products' %}">Product search<span aria-hidden="true"> &rarr;</span></a>{% endif %}
+    {% if inventory_access %}<a href="{% url 'pandoraapp:inventory_report' %}">Inventory report<span aria-hidden="true"> &rarr;</span></a>{% endif %}
+    {% if inventory_access %}<a href="{% url 'pandoraapp:movement_report' %}">Stock movement sheet<span aria-hidden="true"> &rarr;</span></a>{% endif %}
+    {% if inventory_access %}<a href="{% url 'pandoraapp:reorder' %}">Reorder report<span aria-hidden="true"> &rarr;</span></a>{% endif %}
+  </div>
+</section>
+{% endif %}
+{% if financial_access or expense_access %}
+<section>
+  <h2>Finances and performance</h2>
+  <div class="actions">
+    {% if financial_access %}<a href="{% url 'pandoraapp:sales_report' %}">Sales summary<span aria-hidden="true"> &rarr;</span></a>{% endif %}
+    {% if financial_access %}<a href="{% url 'pandoraapp:profit_report' %}">Basic profit/loss<span aria-hidden="true"> &rarr;</span></a>{% endif %}
+    {% if financial_access %}<a href="{% url 'pandoraapp:performance_report' %}">Fast/slow-selling products<span aria-hidden="true"> &rarr;</span></a>{% endif %}
+    {% if expense_access %}<a href="{% url 'pandoraapp:expenses' %}">Operating expenses<span aria-hidden="true"> &rarr;</span></a>{% endif %}
+  </div>
+</section>
+{% endif %}
+</aside></div>
+{% endblock %}

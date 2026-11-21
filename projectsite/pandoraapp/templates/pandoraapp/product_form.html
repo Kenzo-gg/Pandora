@@ -1,0 +1,42 @@
+{% extends 'pandoraapp/base.html' %}
+{% block content %}
+<div class="page-head"><h1>{% if product %}Edit {{ product.name }}{% else %}Add product{% endif %}</h1>
+  <div class="page-actions"><a class="button-link secondary" href="{% url 'pandoraapp:products' %}">Back to products</a></div>
+</div>
+{% if product %}<p><span class="status">{% if product.is_active %}Active{% else %}Inactive — kept for past records, hidden from new sales and purchases{% endif %}</span></p>{% endif %}
+
+{% if product %}
+<div class="supplier-grid">
+  <section>
+    <h2>Stock</h2>
+    <dl class="details">
+      <div><dt>In stock</dt><dd>{{ product.current_stock }}</dd></div>
+      <div><dt>Reorder level</dt><dd>{{ product.reorder_level }}{% if product.current_stock <= product.reorder_level %} · <b>at or below reorder level</b>{% endif %}</dd></div>
+    </dl>
+    <p>Stock changes only when a purchase is received or a sale is completed, so it can’t be edited here.</p>
+  </section>
+  <section>
+    <h2>History</h2>
+    <dl class="details">{% for label, count in history.items %}<div><dt>{{ label|capfirst }}</dt><dd>{{ count }}</dd></div>{% endfor %}</dl>
+  </section>
+</div>
+{% endif %}
+
+<form method="post">{% csrf_token %}{{ form.as_p }}<button>Save product</button></form>
+
+{% if product %}
+<section class="danger-zone">
+  {% if has_history %}
+  <h2>Deactivate product</h2>
+  <p>This product has sales, purchases or stock movements, so it can’t be deleted without breaking those records. Deactivating hides it from new sales and purchases and keeps its history.</p>
+  {% if product.is_active %}
+  <form method="post" action="{% url 'pandoraapp:product_remove' product.pk %}" onsubmit="return confirm('Deactivate {{ product.name|escapejs }}?');">{% csrf_token %}<button class="danger">Deactivate product</button></form>
+  {% else %}<p><b>Already inactive.</b> Tick “Active” above and save to bring it back.</p>{% endif %}
+  {% elif can_delete %}
+  <h2>Delete product</h2>
+  <p>This product has never been bought, sold or moved, so it can be deleted permanently.</p>
+  <form method="post" action="{% url 'pandoraapp:product_remove' product.pk %}" onsubmit="return confirm('Permanently delete {{ product.name|escapejs }}? This cannot be undone.');">{% csrf_token %}<button class="danger">Delete product</button></form>
+  {% endif %}
+</section>
+{% endif %}
+{% endblock %}

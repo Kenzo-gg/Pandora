@@ -11,6 +11,8 @@ def access_for(user):
         'purchase_history_access': inventory and user.has_perm('pandoraapp.change_purchase'),
         'purchase_create_access': inventory and user.has_perm('pandoraapp.add_purchase'),
         'supplier_access': inventory and user.has_perm('pandoraapp.view_supplier'),
+        'category_access': inventory and user.has_perm('pandoraapp.view_category'),
+        'catalog_manage': inventory and user.has_perm('pandoraapp.change_product'),
         'sale_history_access': sales and user.has_perm('pandoraapp.change_sale'),
         'sale_create_access': sales and user.has_perm('pandoraapp.add_sale'),
         'catalog_access': (inventory and user.has_perm('pandoraapp.view_product'))

@@ -1,0 +1,19 @@
+{% extends 'pandoraapp/base.html' %}
+{% block content %}
+<div class="page-head"><h1>Categories</h1>{% if can_add %}<a class="button-link" href="{% url 'pandoraapp:category_create' %}">Add category</a>{% endif %}</div>
+<table>
+  <thead><tr><th>Category</th><th>Description</th><th class="amount">Active products</th><th class="amount">All products</th>{% if can_edit or can_delete %}<th></th>{% endif %}</tr></thead>
+  <tbody>
+  {% for category in rows %}
+    <tr><td>{{ category.name }}</td><td>{{ category.description|default:"—"|truncatechars:80 }}</td>
+      <td class="amount"><a href="{% url 'pandoraapp:products' %}?category={{ category.pk }}">{{ category.active_count }}</a></td>
+      <td class="amount">{{ category.total_count }}</td>
+      {% if can_edit or can_delete %}<td class="row-actions">
+        {% if can_edit %}<a href="{% url 'pandoraapp:category_edit' category.pk %}">Edit</a>{% endif %}
+        {% if can_delete and not category.total_count %}<form method="post" action="{% url 'pandoraapp:category_delete' category.pk %}" onsubmit="return confirm('Delete {{ category.name|escapejs }}?');">{% csrf_token %}<button class="link-button">Delete</button></form>{% endif %}
+      </td>{% endif %}</tr>
+  {% empty %}<tr><td colspan="5">No categories yet.</td></tr>{% endfor %}
+  </tbody>
+</table>
+<p class="product-result-count">A category can be deleted only when no products use it.</p>
+{% endblock %}

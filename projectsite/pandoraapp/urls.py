@@ -1,6 +1,7 @@
 from django.urls import path
 from . import views
 from . import business_views
+from . import catalog_views
 from . import supplier_views
 
 app_name = 'pandoraapp'
@@ -16,6 +17,13 @@ urlpatterns = [path('', views.home, name='home'),
                path('reports/sales/', views.sales_report, name='sales_report'),
                path('products/', views.products, name='products'),
                path('inventory/reorder/', views.reorder, name='reorder'),
+               path('products/new/', catalog_views.product_edit, name='product_create'),
+               path('products/<int:pk>/edit/', catalog_views.product_edit, name='product_edit'),
+               path('products/<int:pk>/remove/', catalog_views.product_remove, name='product_remove'),
+               path('categories/', catalog_views.category_list, name='categories'),
+               path('categories/new/', catalog_views.category_edit, name='category_create'),
+               path('categories/<int:pk>/edit/', catalog_views.category_edit, name='category_edit'),
+               path('categories/<int:pk>/delete/', catalog_views.category_delete, name='category_delete'),
                path('suppliers/', supplier_views.supplier_list, name='suppliers'),
                path('suppliers/new/', supplier_views.supplier_edit, name='supplier_create'),
                path('suppliers/<int:pk>/', supplier_views.supplier_detail, name='supplier_detail'),

@@ -1,24 +1,31 @@
 {% extends 'pandoraapp/base.html' %}
 {% block content %}
-<h1>Products</h1>
+<div class="page-head"><h1>Products</h1>{% if can_add %}<a class="button-link" href="{% url 'pandoraapp:product_create' %}">Add product</a>{% endif %}</div>
 <form method="get" class="list-filters product-filter">
   {% for field in filter_form %}
   <div class="filter-field{% if field.name == 'q' %} product-search{% endif %}">
     {{ field.label_tag }}{{ field }}{{ field.errors }}
   </div>
   {% endfor %}
+  {% if manage %}<div class="filter-field"><label for="show">Status</label>
+  <select name="show" id="show">
+    <option value="">Active products</option>
+    <option value="inactive" {% if show == 'inactive' %}selected{% endif %}>Inactive products</option>
+    <option value="all" {% if show == 'all' %}selected{% endif %}>All products</option>
+  </select></div>{% endif %}
   <div class="product-filter-actions"><button>Apply filters</button>
     <a href="{% url 'pandoraapp:products' %}">Reset</a></div>
 </form>
 <p class="product-result-count" role="status">{{ page.paginator.count }} product{{ page.paginator.count|pluralize }} found</p>
 <table>
-  <thead><tr><th>SKU</th><th>Product</th><th>Category</th><th>Price</th><th>Available</th></tr></thead>
+  <thead><tr><th>SKU</th><th>Product</th><th>Category</th><th>Price</th><th>Available</th>{% if manage %}<th></th>{% endif %}</tr></thead>
   <tbody>
   {% for product in page %}
-    <tr><td>{{ product.sku }}</td><td>{{ product.name }}<br>{{ product.brand }}</td>
+    <tr><td>{{ product.sku }}</td><td>{{ product.name }}{% if not product.is_active %} <span class="status">Inactive</span>{% endif %}<br>{{ product.brand }}</td>
       <td>{{ product.category__name }}</td><td>₱{{ product.selling_price }}</td>
-      <td>{% if product.current_stock == 0 %}Out of stock{% else %}{{ product.current_stock }}{% endif %}</td></tr>
-  {% empty %}<tr><td colspan="5">No products match your search.</td></tr>{% endfor %}
+      <td>{% if product.current_stock == 0 %}Out of stock{% else %}{{ product.current_stock }}{% endif %}</td>
+      {% if manage %}<td class="row-actions"><a href="{% url 'pandoraapp:product_edit' product.pk %}">Edit</a></td>{% endif %}</tr>
+  {% empty %}<tr><td colspan="{% if manage %}6{% else %}5{% endif %}">No products match your search.</td></tr>{% endfor %}
   </tbody>
 </table>
 {% if page.has_other_pages %}

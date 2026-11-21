@@ -285,7 +285,15 @@ def products(request):
     else:
         services._authorize(request.user, services.PURCHASE_ROLES, 'view_product')
     form = ProductFilterForm(request.GET)
-    rows = Product.objects.filter(is_active=True)
+    manage = access_for(request.user)['catalog_manage']
+    show = request.GET.get('show', '') if manage else ''
+    if show == 'inactive':
+        rows = Product.objects.filter(is_active=False)
+    elif show == 'all':
+        rows = Product.objects.all()
+    else:
+        show = ''
+        rows = Product.objects.filter(is_active=True)
     if form.is_valid():
         filters = form.cleaned_data
         query = filters['q']
@@ -309,13 +317,14 @@ def products(request):
     else:
         rows = rows.none()
     # Project only selling-catalog fields so costs never enter the response context.
-    rows = rows.order_by('name', 'pk').values('sku', 'name', 'brand', 'category__name',
-                                            'selling_price', 'current_stock')
+    rows = rows.order_by('name', 'pk').values('pk', 'sku', 'name', 'brand', 'category__name',
+                                            'selling_price', 'current_stock', 'is_active')
     params = request.GET.copy()
     params.pop('page', None)
     return render(request, 'pandoraapp/products.html', {
         'page': Paginator(rows, 25).get_page(request.GET.get('page')),
-        'filter_form': form, 'filter_query': params.urlencode()})
+        'filter_form': form, 'filter_query': params.urlencode(), 'manage': manage, 'show': show,
+        'can_add': manage and request.user.has_perm('pandoraapp.add_product')})
 
 
 @login_required(login_url='/login/')

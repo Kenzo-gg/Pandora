@@ -166,3 +166,82 @@ class BackupRecoveryTests(Fixtures, TransactionTestCase):
         self.assertTrue(result['all_tables_match'])
         for name in ['pandoraapp_sale', 'pandoraapp_purchase', 'pandoraapp_operatingexpense', 'pandoraapp_stockmovement', 'auth_user']:
             self.assertGreater(result['tables'][name]['rows'], 0)
+
+    def test_live_restore_replaces_data_and_keeps_safety_backup(self):
+        from pathlib import Path
+        from tempfile import TemporaryDirectory
+        from .backup_tools import read_backup, restore_live, snapshot, write_backup
+
+        self.make_fixtures()
+        self.receive(self.purchase())
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / 'pandora-2026-11-01.dpapi'
+            write_backup(path, snapshot())
+            ExpenseCategory.objects.create(name='Added after backup')
+            Product.objects.filter(pk=self.product.pk).update(name='Renamed after backup')
+
+            result = restore_live(path, directory)
+
+            self.assertEqual(result['status'], 'success')
+            self.assertFalse(ExpenseCategory.objects.filter(name='Added after backup').exists())
+            self.assertEqual(Product.objects.get(pk=self.product.pk).name, 'Synthetic keyboard')
+            safety = read_backup(Path(directory) / result['safety_backup'])
+            names = [row for row in safety['pandoraapp_expensecategory']['rows'] if 'Added after backup' in row]
+            self.assertEqual(len(names), 1)
+
+    def test_live_restore_failure_puts_current_data_back(self):
+        from pathlib import Path
+        from tempfile import TemporaryDirectory
+        from unittest.mock import patch
+        from . import backup_tools
+        from .backup_tools import RestoreError, restore_live, snapshot, write_backup
+
+        self.make_fixtures()
+        real_replace = backup_tools.replace_live
+        calls = []
+
+        def fail_first(data):
+            calls.append(data)
+            if len(calls) == 1:
+                real_replace({name: dict(table, digest='synthetic mismatch') for name, table in data.items()})
+            return real_replace(data)
+
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / 'pandora-2026-11-01.dpapi'
+            write_backup(path, snapshot())
+            ExpenseCategory.objects.create(name='Added after backup')
+            with patch('pandoraapp.backup_tools.replace_live', side_effect=fail_first):
+                with self.assertRaises(RestoreError) as caught:
+                    restore_live(path, directory)
+            self.assertTrue(caught.exception.entry['rolled_back'])
+            self.assertTrue(ExpenseCategory.objects.filter(name='Added after backup').exists())
+
+    def test_restore_command_selection_and_confirmation(self):
+        from io import StringIO
+        from pathlib import Path
+        from tempfile import TemporaryDirectory
+        from unittest.mock import patch
+        from django.core.management import call_command
+        from django.core.management.base import CommandError
+        from .backup_tools import find_backup
+
+        with TemporaryDirectory() as directory:
+            for name in ['pandora-2026-11-01.dpapi', 'pandora-2026-11-03.dpapi', 'pre-restore-2026-11-02-101500.dpapi']:
+                (Path(directory) / name).write_bytes(b'synthetic')
+            self.assertEqual(find_backup(directory, 'latest').name, 'pandora-2026-11-03.dpapi')
+            self.assertEqual(find_backup(directory, '2026-11-01').name, 'pandora-2026-11-01.dpapi')
+            self.assertEqual(find_backup(directory, 'pre-restore-2026-11-02-101500.dpapi').name, 'pre-restore-2026-11-02-101500.dpapi')
+            self.assertIsNone(find_backup(directory, '..\pandora-2026-11-01.dpapi'))
+
+            with patch('pandoraapp.management.commands.restore_pandora.default_directory', return_value=Path(directory)):
+                output = StringIO()
+                call_command('restore_pandora', stdout=output)
+                self.assertIn('pandora-2026-11-03.dpapi', output.getvalue())
+                with self.assertRaisesMessage(CommandError, 'No backup matches'):
+                    call_command('restore_pandora', '2030-01-01')
+                with patch('sys.stdin.isatty', return_value=False):
+                    with self.assertRaisesMessage(CommandError, '--yes'):
+                        call_command('restore_pandora', 'latest')
+                with patch('sys.stdin.isatty', return_value=True), patch('builtins.input', return_value='wrong'):
+                    with self.assertRaisesMessage(CommandError, 'Nothing was changed'):
+                        call_command('restore_pandora', 'latest')

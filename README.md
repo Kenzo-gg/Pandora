@@ -126,7 +126,7 @@ Pandora is a Sales and Inventory Management System designed to help a store reco
 
 **Member 1 — Database & Backend**
 - [ ] Verify permissions for critical actions and sensitive records.
-- [ ] Set up and test a database backup and restore procedure.
+- [X] Set up and test a database backup and restore procedure.
 - [ ] Fix integration bugs and validate stock movement history.
 
 **Member 2 — Frontend & Sales**

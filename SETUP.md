@@ -83,3 +83,28 @@ Backups are saved in `%LOCALAPPDATA%\Pandora\Backups`, and the last seven days a
 cd projectsite
 ..\.venv\Scripts\python -B manage.py backup_pandora --verify-restore
 ```
+
+## 7. Restore from a backup
+
+Restoring replaces **all** current data with the backup, so stop the Pandora server first. It only works on the computer and Windows account that made the backup.
+
+See which backups you have (newest first):
+
+```powershell
+cd projectsite
+..\.venv\Scripts\python -B manage.py restore_pandora
+```
+
+Restore one by date, by file name, or `latest`. You'll be asked to type the database name to confirm:
+
+```powershell
+..\.venv\Scripts\python -B manage.py restore_pandora latest
+```
+
+What happens:
+
+1. The backup is loaded into a temporary database and checked table by table. If it's damaged, nothing changes.
+2. The current data is saved as `pre-restore-<date>-<time>.dpapi` in the same folder. These files are never deleted automatically.
+3. The live database is replaced and every table is checked against the backup. If anything goes wrong, the saved data is put back automatically.
+
+To undo a restore, restore the `pre-restore-…` file it made. If the backup came from an older version of Pandora, run `manage.py migrate` afterwards.

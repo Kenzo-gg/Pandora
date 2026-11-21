@@ -13,7 +13,8 @@ from .services import PURCHASE_ROLES, _authorize
 
 class PeriodForm(SalesReportForm):
     period = None
-    category = forms.ModelChoiceField(queryset=Category.objects.order_by('name', 'pk'), required=False)
+    category = forms.ModelChoiceField(queryset=Category.objects.order_by('name', 'pk'), required=False,
+                                      empty_label='All categories')
 
 
 class PerformanceForm(PeriodForm):
@@ -77,6 +78,8 @@ def profit_loss(*, actor, start, end, category=None):
     gross = revenue - cogs
     rows = [['Revenue', f'{revenue:,.2f}'], ['Historical cost of goods sold', f'{cogs:,.2f}'],
             ['Gross profit', f'{gross:,.2f}']]
+    summary = [('Revenue', revenue, 'money'), ('Gross profit', gross, 'money'),
+               ('Gross margin', round(gross * 100 / revenue, 1) if revenue else None, 'percent')]
     notes = report_notes(start, end, category)
     if category:
         notes.append('Category summary includes revenue, COGS and gross profit. General expenses are unallocated.')
@@ -85,11 +88,13 @@ def profit_loss(*, actor, start, end, category=None):
             voided_at__isnull=True).values_list('amount', flat=True))
         total = sum(expenses, Decimal('0.00'))
         rows += [['Recorded operating expenses', f'{total:,.2f}'], ['Operating profit/loss', f'{gross - total:,.2f}']]
+        summary.append(('Operating profit/loss', gross - total, 'money'))
         if not expenses:
             notes.append('No nonvoided expenses are recorded for this period. Expense coverage is limited to recorded entries.')
     notes.append('Basic operating summary based on completed sales, saved costs and recorded expenses. Amounts rounded to PHP 0.01 for display.')
     return {'title': 'Basic profit/loss' if not category else 'Category gross profit',
-            'headings': ['Measure', 'Amount (PHP)'], 'rows': rows, 'notes': notes, 'widths': [450, 270]}
+            'headings': ['Measure', 'Amount (PHP)'], 'rows': rows, 'notes': notes, 'widths': [450, 270],
+            'summary': summary}
 
 
 def stock_movements(*, actor, start, end, category=None):

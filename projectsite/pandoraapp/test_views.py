@@ -180,6 +180,38 @@ class TransactionPagesTests(Fixtures, TestCase):
         self.assertContains(response, 'data-search="%s' % self.product.sku.lower())
         self.assertContains(response, 'Estimated total')
 
+    def test_dashboard_compares_sales_with_previous_period(self):
+        from datetime import timedelta
+        from django.utils import timezone
+        from .views import MANILA
+        today = timezone.now().astimezone(MANILA).date()
+        self.receive(self.purchase())
+        earlier, recent = self.sale(quantity=2), self.sale(quantity=1)
+        self.complete(earlier)
+        self.complete(recent)
+        Sale.objects.filter(pk=earlier.pk).update(sale_date=today - timedelta(days=7))
+        Sale.objects.filter(pk=recent.pk).update(sale_date=today)
+        cards = {card[0]: card[5] for card in self.client.get(self.url('home')).context['cards']}
+        # One sale each week; revenue halves.
+        self.assertEqual(cards, {'Completed sales': 0, 'Total revenue': -50, 'Inventory value': None})
+
+    def test_dashboard_chart_groups_by_calendar_and_rounds_scale(self):
+        from .views import nice_ceiling
+        self.assertEqual([nice_ceiling(v) for v in (26235, 450, 1000, 0)], [30000, 500, 1000, 1])
+        self.receive(self.purchase())
+        self.complete(self.sale(quantity=2))
+        for period, grain in [('7D', 'day'), ('30D', 'day'), ('3M', 'week'), ('1Y', 'month')]:
+            context = self.client.get(self.url('home'), {'period': period}).context
+            buckets = context['buckets']
+            self.assertEqual(context['grain'], grain)
+            self.assertEqual(sum(value for _, _, value in buckets), context['revenue'])  # no day lost or doubled
+            for first, _, _ in buckets[1:]:  # only the first bar may start mid-week or mid-month
+                if grain == 'week':
+                    self.assertEqual(first.weekday(), 0)
+                if grain == 'month':
+                    self.assertEqual(first.day, 1)
+            self.assertEqual((buckets[-1][1] - buckets[0][0]).days + 1, {'7D': 7, '30D': 30, '3M': 90, '1Y': 365}[period])
+
     def test_sales_report_totals_and_periods(self):
         self.receive(self.purchase())
         sale = self.sale(quantity=2)

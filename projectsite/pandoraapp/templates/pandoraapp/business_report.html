@@ -1,11 +1,22 @@
 {% extends 'pandoraapp/base.html' %}
 {% block content %}
 <h1>{{ title }}</h1>
-<form method="get">{{ form.as_p }}<button>View report</button><button name="format" value="pdf">Download PDF</button></form>
+{% if report %}<p class="report-meta">{{ form.cleaned_data.start|date:"M j" }} – {{ form.cleaned_data.end|date:"M j, Y" }} · PHP · Category: {{ form.cleaned_data.category|default:"All" }} · {{ report.notes.2 }}</p>{% endif %}
+<form method="get" class="report-form">{{ form.as_p }}<div class="report-actions"><button>View report</button><button name="format" value="pdf">Download PDF</button></div></form>
 {% if report %}
-{% for note in report.notes %}<p>{{ note }}</p>{% endfor %}
-<table><thead><tr>{% for heading in report.headings %}<th>{{ heading }}</th>{% endfor %}</tr></thead>
-<tbody>{% for row in report.rows %}<tr>{% for cell in row %}<td>{{ cell }}</td>{% endfor %}</tr>
+{% if report.summary %}
+<div class="metrics report-summary">
+  {% for label,value,kind in report.summary %}
+  <article{% if value < 0 %} class="loss"{% endif %}>
+    <div class="metric-label">{{ label }}</div>
+    <strong class="metric-number">{% if value is None %}—{% elif kind == 'percent' %}{{ value }}%{% else %}₱{{ value|floatformat:"2g" }}{% endif %}</strong>
+  </article>
+  {% endfor %}
+</div>
+{% endif %}
+{% for note in report.notes|slice:"3:" %}<p class="report-note">{{ note }}</p>{% endfor %}
+<table class="report-{{ kind }}"><thead><tr>{% for heading in report.headings %}<th>{{ heading }}</th>{% endfor %}</tr></thead>
+<tbody>{% for row in report.rows %}<tr{% if row.0 == 'Gross profit' or row.0 == 'Operating profit/loss' %} class="total"{% endif %}>{% for cell in row %}<td>{{ cell }}</td>{% endfor %}</tr>
 {% empty %}<tr><td colspan="8">No records match the selected filters.</td></tr>{% endfor %}</tbody></table>
 {% endif %}
 {% endblock %}

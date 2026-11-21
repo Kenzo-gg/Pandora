@@ -57,6 +57,9 @@ class RemainingFeaturesTests(Fixtures, TestCase):
         result = profit_loss(actor=self.admin, start=TODAY, end=TODAY)
         self.assertEqual(dict(result['rows'])['Operating profit/loss'], '400.00')
         self.assertEqual(dict(result['rows'])['Historical cost of goods sold'], '400.00')
+        summary = {label: value for label, value, _ in result['summary']}
+        self.assertEqual(summary['Gross margin'], Decimal('55.6'))  # 500 gross / 900 revenue
+        self.assertEqual(summary['Operating profit/loss'], 400)
         void_expense(actor=self.admin, expense_id=expense.pk, reason='Test void')
         self.assertEqual(dict(profit_loss(actor=self.admin, start=TODAY, end=TODAY)['rows'])['Operating profit/loss'], '500.00')
         scoped = profit_loss(actor=self.admin, start=TODAY, end=TODAY, category=self.category)

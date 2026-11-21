@@ -22,6 +22,8 @@ from .views import authorize, document
 
 
 def pdf_response(report, filename):
+    # The PDF keeps the plain table; on-screen summary cards are web-only.
+    report = {key: value for key, value in report.items() if key != 'summary'}
     response = HttpResponse(table_pdf(**report), content_type='application/pdf')
     response['Content-Disposition'] = f'attachment; filename="{filename}.pdf"'
     response['Cache-Control'] = 'private, no-store'
@@ -48,7 +50,7 @@ def report(request, kind):
         if request.GET.get('format') == 'pdf':
             return pdf_response(result, 'pandora-' + kind)
     response = render(request, 'pandoraapp/business_report.html', {
-        'form': form, 'report': result, 'title': {'performance': 'Fast/slow-selling products',
+        'form': form, 'report': result, 'kind': kind, 'title': {'performance': 'Fast/slow-selling products',
         'profit': 'Basic profit/loss', 'movements': 'Stock movement sheet'}[kind]})
     response['Cache-Control'] = 'private, no-store'
     return response

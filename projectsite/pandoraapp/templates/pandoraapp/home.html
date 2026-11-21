@@ -17,14 +17,14 @@
 <div class="center-col">
   {% if cards %}
   <div class="metrics">
-    {% for label,value,money,caption,icon in cards %}
+    {% for label,value,money,caption,icon,change in cards %}
     <article>
       <div class="metric-label">
         <span class="metric-icon">{% include "pandoraapp/icon.html" with name=icon only %}</span>
         {{ label }}
       </div>
       <strong class="metric-number"><span class="metric-final">{% if money %}₱{{ value|floatformat:"2g" }}{% else %}{{ value }}{% endif %}</span></strong>
-      <small>{{ caption }}</small>
+      <small>{% if change is not None %}<span class="trend{% if change > 0 %} up{% elif change < 0 %} down{% endif %}" title="Compared with the previous period of the same length">{% if change %}{{ change|stringformat:"+d" }}{% else %}0{% endif %}%</span> {% endif %}{{ caption }}</small>
     </article>
     {% endfor %}
   </div>

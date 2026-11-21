@@ -101,6 +101,19 @@ def document(user, kind, pk, *, lock=False):
     return obj
 
 
+def nice_ceiling(value):
+    """Round a chart maximum up to an easy-to-read number: 26,235 -> 30,000."""
+    if value <= 0:
+        return 1
+    magnitude = 10 ** (len(str(int(value))) - 1)
+    return next(step * magnitude for step in (1, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10) if value <= step * magnitude)
+
+
+def percent_change(now, before):
+    """Whole-number % change, or None when there is nothing to compare against."""
+    return round((now - before) * 100 / before) if before else None
+
+
 @login_required(login_url='/login/')
 @require_GET
 def home(request):
@@ -121,20 +134,30 @@ def home(request):
         start = today - timedelta(days=periods[period] - 1)
         daily = dict(completed.filter(sale_date__range=(start, today)).values('sale_date')
                      .annotate(total=Sum('total_amount')).values_list('sale_date', 'total'))
-        context['days'] = [(start + timedelta(days=i), daily.get(start + timedelta(days=i), 0))
-                           for i in range(periods[period])]
         sales = completed.filter(sale_date__range=(start, today))
         revenue = sum(daily.values())
-        cards.extend([('Completed sales', sales.count(), False, 'Transactions in this period', 'receipt'),
-                      ('Total revenue', revenue, True, 'Completed sales in this period', 'trend')])
+        # Compare with the same number of days just before this period.
+        before = completed.filter(sale_date__range=(start - timedelta(days=periods[period]), start - timedelta(days=1))
+                                  ).aggregate(count=Count('pk'), total=Sum('total_amount'))
+        count = sales.count()
+        cards.extend([('Completed sales', count, False, 'Transactions in this period', 'receipt',
+                       percent_change(count, before['count'])),
+                      ('Total revenue', revenue, True, 'Completed sales in this period', 'trend',
+                       percent_change(revenue, before['total'] or 0))])
         context.update(start=start, revenue=revenue)
-        # Keep long ranges legible by grouping adjacent days into at most ten bars.
-        step = (periods[period] + 9) // 10
-        buckets = []
-        for offset in range(0, periods[period], step):
-            chunk = context['days'][offset:offset + step]
-            buckets.append((chunk[0][0], chunk[-1][0], sum(amount for _, amount in chunk)))
-        context.update(buckets=buckets, peak=max(row[2] for row in buckets) or 1)
+        # One bar per calendar day, week (from Monday) or month, so labels match how people think.
+        grain = {'7D': 'day', '30D': 'day', '3M': 'week', '1Y': 'month'}[period]
+        groups = {}
+        for i in range(periods[period]):
+            day = start + timedelta(days=i)
+            key = {'day': day, 'week': day - timedelta(days=day.weekday()), 'month': day.replace(day=1)}[grain]
+            first, _, total = groups.get(key, (day, day, 0))
+            groups[key] = (first, day, total + daily.get(day, 0))
+        buckets = list(groups.values())
+        scale_max = nice_ceiling(max(row[2] for row in buckets))
+        context.update(buckets=buckets, grain=grain, scale_max=scale_max, scale_mid=scale_max / 2,
+                       label_every=5 if period == '30D' else 2 if period == '3M' else 1,
+                       axis_format='M' if grain == 'month' else 'M j')
         context['top_products'] = (SaleItem.objects.filter(sale__status='completed', sale__sale_date__range=(start, today))
                                    .values('product_id', 'product__name').annotate(units=Sum('quantity'))
                                    .order_by('-units', 'product_id')[:4])
@@ -156,10 +179,10 @@ def home(request):
                        available_end=round(100*(total-low-out)/total) if total else 0,
                        low_end=round(100*(total-out)/total) if total else 0)
         if not context['financial_access']:
-            cards.append(('Active products', total, False, 'Current catalog', 'package'))
+            cards.append(('Active products', total, False, 'Current catalog', 'package', None))
         if context['financial_access']:
             value = products.aggregate(total=Sum(F('current_stock') * F('cost_price')))['total']
-            cards.append(('Inventory value', value or 0, True, 'Active stock at cost', 'package'))
+            cards.append(('Inventory value', value or 0, True, 'Active stock at cost', 'package', None))
         context['inventory_rows'] = products.select_related('category').order_by('name', 'pk')[:8]
         context['alerts'] = products_needing_reorder()[:4]
         other_cards.append(('Products to reorder', products_needing_reorder().count(), False))
@@ -345,6 +368,8 @@ def products(request):
     return render(request, 'pandoraapp/products.html', {
         'page': Paginator(rows, 25).get_page(request.GET.get('page')),
         'filter_form': form, 'filter_query': params.urlencode(), 'manage': manage, 'show': show,
+        'active_filters': sum(bool(request.GET.get(key)) for key in
+                              ('category', 'brand', 'stock', 'min_price', 'max_price')) + bool(show),
         'can_add': manage and request.user.has_perm('pandoraapp.add_product')})
 
 

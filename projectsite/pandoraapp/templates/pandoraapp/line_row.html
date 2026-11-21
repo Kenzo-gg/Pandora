@@ -1,0 +1,7 @@
+<tr class="line">
+  <td class="line-product">{{ form.non_field_errors }}{{ form.product.label_tag }}{{ form.product }}{{ form.product.errors }}<p class="line-info"></p></td>
+  <td class="line-qty">{{ form.quantity.label_tag }}{{ form.quantity }}{{ form.quantity.errors }}</td>
+  {% if form.unit_cost %}<td class="line-cost">{{ form.unit_cost.label_tag }}{{ form.unit_cost }}{{ form.unit_cost.errors }}</td>
+  {% else %}<td class="line-price amount" data-label="Unit price">—</td>{% endif %}
+  <td class="line-total amount" data-label="Line total">—</td>
+</tr>

@@ -2,19 +2,24 @@
 {% block content %}
 <div class="page-head"><h1>Products</h1>{% if can_add %}<a class="button-link" href="{% url 'pandoraapp:product_create' %}">Add product</a>{% endif %}</div>
 <form method="get" class="list-filters product-filter">
-  {% for field in filter_form %}
-  <div class="filter-field{% if field.name == 'q' %} product-search{% endif %}">
-    {{ field.label_tag }}{{ field }}{{ field.errors }}
-  </div>
-  {% endfor %}
-  {% if manage %}<div class="filter-field"><label for="show">Status</label>
-  <select name="show" id="show">
-    <option value="">Active products</option>
-    <option value="inactive" {% if show == 'inactive' %}selected{% endif %}>Inactive products</option>
-    <option value="all" {% if show == 'all' %}selected{% endif %}>All products</option>
-  </select></div>{% endif %}
-  <div class="product-filter-actions"><button>Apply filters</button>
-    <a href="{% url 'pandoraapp:products' %}">Reset</a></div>
+  <div class="filter-field product-search">{{ filter_form.q.label_tag }}{{ filter_form.q }}{{ filter_form.q.errors }}</div>
+  <button>Search</button>
+  <details class="more-filters"{% if active_filters or filter_form.errors %} open{% endif %}>
+    <summary>Filters{% if active_filters %} ({{ active_filters }}){% endif %}</summary>
+    <div class="filter-panel">
+      {% for field in filter_form %}{% if field.name != 'q' %}
+      <div class="filter-field">{{ field.label_tag }}{{ field }}{{ field.errors }}</div>
+      {% endif %}{% endfor %}
+      {% if manage %}<div class="filter-field"><label for="show">Status</label>
+      <select name="show" id="show">
+        <option value="">Active products</option>
+        <option value="inactive" {% if show == 'inactive' %}selected{% endif %}>Inactive products</option>
+        <option value="all" {% if show == 'all' %}selected{% endif %}>All products</option>
+      </select></div>{% endif %}
+      <div class="product-filter-actions"><button>Apply filters</button>
+        <a href="{% url 'pandoraapp:products' %}">Reset</a></div>
+    </div>
+  </details>
 </form>
 <p class="product-result-count" role="status">{{ page.paginator.count }} product{{ page.paginator.count|pluralize }} found</p>
 <table>

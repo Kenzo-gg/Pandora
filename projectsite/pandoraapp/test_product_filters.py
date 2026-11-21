@@ -40,6 +40,13 @@ class ProductFilterTests(Fixtures, TestCase):
         self.assertNotIn('Pulsar', dict(self.client.get(self.url).context[
             'filter_form'].fields['brand'].choices))
 
+    def test_filter_count_ignores_status_the_view_does_not_apply(self):
+        count = lambda params: self.client.get(self.url, params).context['active_filters']
+        self.assertEqual(count({'stock': 'low', 'show': 'all'}), 2)
+        self.assertEqual(count({'show': 'bogus'}), 0)  # unknown status falls back to active
+        self.client.force_login(self.role_user('filter_cashier', 'Cashier', ['view_sale', 'change_sale', 'add_sale', 'view_product']))
+        self.assertEqual(count({'show': 'all'}), 0)  # cashiers can't filter by status
+
     def test_invalid_filters_show_errors_without_crashing(self):
         for params in ({'min_price': '-1'}, {'min_price': 'NaN'}, {'max_price': 'abc'},
                        {'min_price': '3000', 'max_price': '2000'},

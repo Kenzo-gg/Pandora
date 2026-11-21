@@ -1,5 +1,5 @@
 from datetime import date, timedelta
-from uuid import uuid4
+import secrets
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -69,6 +69,20 @@ def sales_report(request):
     response = render(request, 'pandoraapp/sales_report.html', {'form': form, 'report': report})
     response['Cache-Control'] = 'private, no-store'
     return response
+
+
+REFERENCE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'  # no 0/O or 1/I look-alikes
+
+
+def new_reference(kind):
+    """Readable draft reference such as PO-20261121-K7Q4MX.
+
+    The random part (32**6, about one billion values per day) avoids collisions; a counter could
+    hand two people the same number, and services treat a repeated reference as a retry of one draft.
+    """
+    suffix = ''.join(secrets.choice(REFERENCE_ALPHABET) for _ in range(6))
+    day = timezone.localdate().strftime('%Y%m%d')
+    return f'{"PO" if kind == "purchase" else "S"}-{day}-{suffix}'
 
 
 def authorize(user, kind, permission):
@@ -163,7 +177,7 @@ def create(request, kind):
     header_class = PurchaseHeaderForm if kind == 'purchase' else SaleHeaderForm
     lines_class = PurchaseLines if kind == 'purchase' else SaleLines
     data = request.POST if request.method == 'POST' else None
-    initial = {'reference': uuid4().hex.upper()}
+    initial = {'reference': new_reference(kind)}
     if kind == 'purchase' and request.GET.get('supplier', '').isdigit():
         initial['supplier'] = int(request.GET['supplier'])
     header = header_class(data, initial=initial)
@@ -245,6 +259,13 @@ def post_transaction(request, kind, pk):
                 services.complete_sale(**arguments, payment_method=form.cleaned_data['payment_method'],
                                        amount_paid=form.cleaned_data['amount_paid'])
             messages.success(request, 'Purchase received.' if kind == 'purchase' else 'Sale completed.')
+            if kind == 'sale':
+                low = (Product.objects.filter(sale_items__sale_id=pk, current_stock__lte=F('reorder_level'))
+                       .distinct().order_by('name'))
+                for product in low:
+                    state = 'is out of stock' if product.current_stock == 0 else 'is at or below its reorder level'
+                    messages.warning(request, f'Reorder alert: {product.name} {state} '
+                                     f'({product.current_stock} left, reorder level {product.reorder_level}).')
             return redirect('pandoraapp:' + kind + '_detail', pk=pk)
         except (signing.BadSignature, KeyError, TypeError, AttributeError):
             form.add_error(None, 'Confirmation expired or invalid. Reload and review this transaction.')

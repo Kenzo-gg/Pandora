@@ -5,7 +5,7 @@
 .metric-running .metric-final { opacity:0; }
 .toasts { position:fixed; bottom:18px; right:18px; max-width:min(25rem,calc(100vw - 36px)); z-index:20; display:grid; gap:8px; }
 .toast { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 14px; background:var(--card); border:1px solid var(--line); border-left:4px solid var(--blue); border-radius:10px; box-shadow:0 5px 24px #071f3d22; }
-.toast.success {border-left-color:#16a34a;} .toast.error {border-left-color:#ef4444;}
+.toast.success {border-left-color:#16a34a;} .toast.error {border-left-color:#ef4444;} .toast.warning {border-left-color:#f59e0b;font-weight:600;}
 .toast button {background:transparent;color:var(--ink);padding:2px 7px;font-size:18px;}
 button:disabled {opacity:.5;cursor:not-allowed;}
 [aria-invalid=true] {border-color:#c03535;}

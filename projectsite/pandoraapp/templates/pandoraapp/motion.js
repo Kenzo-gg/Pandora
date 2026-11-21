@@ -80,7 +80,8 @@
     }
     function schedule() {
       clearTimeout(timer);
-      if (!toast.matches(':hover, :focus-within')) timer = setTimeout(dismiss,8000);
+      // Warnings (such as reorder alerts) stay until the user dismisses them.
+      if (!toast.matches(':hover, :focus-within, .warning')) timer = setTimeout(dismiss,8000);
     }
     toast.querySelector('button').addEventListener('click',dismiss);
     toast.onpointerenter = toast.onfocusin = () => clearTimeout(timer);

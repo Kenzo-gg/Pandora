@@ -150,6 +150,28 @@ class TransactionPagesTests(Fixtures, TestCase):
         response = self.client.get(url, {'start': 'not-a-date'})
         self.assertEqual(len(response.context['page']), 2)
 
+    def test_new_references_are_short_and_readable(self):
+        import re
+        for kind, prefix in (('purchase', 'PO'), ('sale', 'S')):
+            response = self.client.get(self.url(kind + '_create'))
+            reference = response.context['header']['reference'].value()
+            self.assertRegex(reference, rf'^{prefix}-\d{{8}}-[A-HJ-NP-Z2-9]{{6}}$')
+        self.assertTrue(re.fullmatch(r'[A-Z0-9][A-Z0-9_-]{0,99}', reference))  # services accept it
+
+    def test_completing_sale_warns_when_stock_reaches_reorder_level(self):
+        self.receive(self.purchase(quantity=8))  # reorder level is 5
+        sale = self.sale(quantity=3)
+        data = {'token': self.token('sale', sale), 'payment_method': 'cash', 'amount_paid': '1350.00'}
+        response = self.client.post(self.url('sale_post', sale.pk), data, follow=True)
+        texts = [str(m) for m in response.context['messages']]
+        self.assertIn('Sale completed.', texts)
+        self.assertTrue(any('Reorder alert: Synthetic keyboard' in t and '5 left' in t for t in texts))
+        sale = self.sale(quantity=1)
+        data = {'token': self.token('sale', sale), 'payment_method': 'cash', 'amount_paid': '450.00'}
+        self.receive(self.purchase(quantity=10))  # back above the level: no warning
+        response = self.client.post(self.url('sale_post', sale.pk), data, follow=True)
+        self.assertFalse(any('Reorder alert' in str(m) for m in response.context['messages']))
+
     def test_sale_form_lists_price_stock_and_search_text(self):
         self.product.refresh_from_db()
         response = self.client.get(self.url('sale_create'))

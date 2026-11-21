@@ -4,11 +4,11 @@
 <p>{% if kind == 'sale' %}<a href="{% url 'pandoraapp:sale_pdf' obj.pk %}">Print / download receipt</a>{% else %}<a href="{% url 'pandoraapp:purchase_pdf' obj.pk %}">Print / download Stock-In Record</a>{% endif %}</p>
 {% endif %}
 {% if kind == 'purchase' %}<p>{{ obj.supplier.name }} · {{ obj.order_date }}</p>{% else %}<p>{{ obj.sale_date }} · {{ obj.cashier_auth.username }}</p>{% endif %}
-<table><thead><tr><th>Product</th><th>Quantity</th><th>Unit price</th><th>Total</th></tr></thead><tbody>{% for row in rows %}<tr><td>{{ row.product }}</td><td>{{ row.quantity }}</td><td>{{ row.price }}</td><td>{{ row.total }}</td></tr>{% endfor %}</tbody></table><p>Total ₱{{ total }}</p>
+<table><thead><tr><th>Product</th><th class="amount">Quantity</th><th class="amount">{% if kind == 'purchase' %}Unit cost{% else %}Unit price{% endif %}</th><th class="amount">Total</th></tr></thead><tbody>{% for row in rows %}<tr><td>{{ row.product }}</td><td class="amount">{{ row.quantity }}</td><td class="amount">₱{{ row.price|floatformat:"2g" }}</td><td class="amount">₱{{ row.total|floatformat:"2g" }}</td></tr>{% endfor %}</tbody></table><p class="sale-total">Total <b>₱{{ total|floatformat:"2g" }}</b></p>
 {% if obj.status == 'pending' %}
 {% if kind == 'purchase' %}{% url 'pandoraapp:purchase_post' obj.pk as post_url %}{% url 'pandoraapp:purchase_cancel' obj.pk as cancel_url %}{% else %}{% url 'pandoraapp:sale_post' obj.pk as post_url %}{% url 'pandoraapp:sale_cancel' obj.pk as cancel_url %}{% endif %}
 <form method="post" action="{{ post_url }}">{% csrf_token %}{{ action_form.as_p }}<button>{% if kind == 'purchase' %}Receive stock{% else %}Complete sale{% endif %}</button></form>
 <h2>Cancel draft</h2><form method="post" action="{{ cancel_url }}">{% csrf_token %}{{ cancel_form.as_p }}<button>Cancel draft</button></form>
-{% elif kind == 'sale' and obj.status == 'completed' %}<p>{{ obj.get_payment_method_display }} · Paid ₱{{ obj.amount_paid }} · Change ₱{{ obj.change_amount }}</p>
-{% elif kind == 'purchase' and obj.status == 'completed' %}<p>Received {{ obj.received_at }} by {{ obj.received_by_auth.username }}</p>{% endif %}
+{% elif kind == 'sale' and obj.status == 'completed' %}<p>{{ obj.get_payment_method_display }} · Paid ₱{{ obj.amount_paid|floatformat:"2g" }} · Change ₱{{ obj.change_amount|floatformat:"2g" }}</p>
+{% elif kind == 'purchase' and obj.status == 'completed' %}<p>Received {{ obj.received_at|date:"M j, Y, g:i A" }} by {{ obj.received_by_auth.username }}</p>{% endif %}
 {% endblock %}

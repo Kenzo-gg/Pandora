@@ -1,50 +1,83 @@
 {% extends 'pandoraapp/base.html' %}
 {% block content %}
-<header class="dash-head"><h1>Dashboard</h1><span>{% now "F Y" %}</span></header>
-<div class="metrics">
-{% for label,value,money in cards %}<article><span>{{ label }}</span><strong>{% if money %}&#8369;{{ value|floatformat:"2g" }}{% else %}{{ value }}{% endif %}</strong></article>{% endfor %}
+<header class="dash-head">
+  <div>
+    <h1>Store overview</h1>
+    <p>{{ today|date:"l, F j, Y" }}</p>
+  </div>
+  {% if financial_access %}
+  <form method="get" id="sales-filter">
+    <label for="period">Sales period</label>
+    <select id="period" name="period">{% for key,length in periods.items %}<option value="{{ key }}" {% if key == period %}selected{% endif %}>Last {{ length }} days</option>{% endfor %}</select>
+    <button class="apply-period">Apply</button>
+  </form>
+  {% endif %}
+</header>
+
+<div class="center-col">
+  {% if cards %}
+  <div class="metrics">
+    {% for label,value,money,caption,icon in cards %}
+    <article>
+      <div class="metric-label">
+        <span class="metric-icon">{% include "pandoraapp/icon.html" with name=icon only %}</span>
+        {{ label }}
+      </div>
+      <strong class="metric-number"><span class="metric-final">{% if money %}₱{{ value|floatformat:"2g" }}{% else %}{{ value }}{% endif %}</span></strong>
+      <small>{{ caption }}</small>
+    </article>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <div class="overview-grid">
+    {% if financial_access %}{% include 'pandoraapp/sales_plot.html' %}{% endif %}
+    {% if inventory_access %}
+    <section class="distribution">
+      <h2>Inventory distribution</h2>
+      <div class="ring{% if not product_count %} empty-ring{% endif %}" style="--available:{{ available_end }}%;--low:{{ low_end }}%" aria-hidden="true"><span><b>{{ product_count }}</b>Active products</span></div>
+      <dl class="legend">
+        <div><dt>Above reorder level</dt><dd>{{ available_count }}</dd></div>
+        <div><dt>Low stock</dt><dd>{{ low_count }}</dd></div>
+        <div><dt>Out of stock</dt><dd>{{ out_count }}</dd></div>
+      </dl>
+    </section>
+    {% endif %}
+    {% if sale_history_access or purchase_history_access %}
+    <section class="transactions">
+      <h2>Recent transactions</h2>
+      {% for date,reference,type,status,amount,pk in recent %}
+      <div class="txn">
+        <span class="txn-icon">{% if type == 'Sale' %}{% include 'pandoraapp/icon.html' with name='receipt' only %}{% else %}{% include 'pandoraapp/icon.html' with name='cart' only %}{% endif %}</span>
+        <div><a href="{% if type == 'Sale' %}{% url 'pandoraapp:sale_detail' pk %}{% else %}{% url 'pandoraapp:purchase_detail' pk %}{% endif %}">{{ reference }}</a><small>{{ type }} · {{ date|date:"M j" }}</small></div>
+        <div class="amount"><b>₱{{ amount|floatformat:"2g" }}</b><small>{{ status }}</small></div>
+      </div>
+      {% empty %}<p>No recent transactions.</p>{% endfor %}
+    </section>
+    {% endif %}
+    {% if financial_access %}
+    <section><h2>Product performance</h2>
+      {% for product in top_products %}
+      <div class="performance"><span>{{ product.product__name }}</span><small>{{ product.units }} sold</small><progress aria-label="{{ product.product__name }} units sold" value="{{ product.units }}" max="{{ top_products.0.units }}"></progress></div>
+      {% empty %}<p>No completed sales in this period.</p>{% endfor %}
+    </section>
+    {% endif %}
+  </div>
 </div>
-<div class="dashboard"><div class="overview">
-{% if financial_access %}
-<section><h2>Sales trend <small>Last 7 days</small></h2>
-<div class="chart">{% for day,value in days %}<div class="column"><small>{{ value|floatformat:"2g" }}</small><div class="track"><i style="height:{% widthratio value peak 100 %}%"></i></div><small>{{ day|date:"D" }}</small></div>{% endfor %}</div></section>
-<section><h2>Top products <small>Units sold this month</small></h2>
-{% for product in top_products %}<div class="rank"><span>{{ product.product__name }}</span><b>{{ product.units }}</b></div>{% empty %}<p>No completed sales this month.</p>{% endfor %}</section>{% endif %}
-{% if sale_history_access or purchase_history_access %}<section><h2>Recent transactions</h2><div class="scroll"><table><thead><tr><th>Reference</th><th>Type</th><th>Date</th><th>Status</th></tr></thead><tbody>
-{% for date,reference,type,status in recent %}<tr><td>{{ reference }}</td><td>{{ type }}</td><td>{{ date|date:"M j" }}</td><td><span class="status">{{ status }}</span></td></tr>{% empty %}<tr><td colspan="4">No transactions yet.</td></tr>{% endfor %}</tbody></table></div></section>{% endif %}
-</div><aside>
-{% if sale_create_access or purchase_create_access or sale_history_access or purchase_history_access %}
-<section>
-  <h2>Transactions</h2>
-  <div class="actions">
-    {% if sale_create_access %}<a href="{% url 'pandoraapp:sale_create' %}">New sale<span aria-hidden="true"> &rarr;</span></a>{% endif %}
-    {% if purchase_create_access %}<a href="{% url 'pandoraapp:purchase_create' %}">New purchase<span aria-hidden="true"> &rarr;</span></a>{% endif %}
-    {% if sale_history_access %}<a href="{% url 'pandoraapp:sale_history' %}">Sales history<span aria-hidden="true"> &rarr;</span></a>{% endif %}
-    {% if purchase_history_access %}<a href="{% url 'pandoraapp:purchase_history' %}">Purchase history<span aria-hidden="true"> &rarr;</span></a>{% endif %}
-  </div>
-</section>
-{% endif %}
-{% if catalog_access or inventory_access %}
-<section>
-  <h2>Inventory</h2>
-  <div class="actions">
-    {% if catalog_access %}<a href="{% url 'pandoraapp:products' %}">Product search<span aria-hidden="true"> &rarr;</span></a>{% endif %}
-    {% if inventory_access %}<a href="{% url 'pandoraapp:inventory_report' %}">Inventory report<span aria-hidden="true"> &rarr;</span></a>{% endif %}
-    {% if inventory_access %}<a href="{% url 'pandoraapp:movement_report' %}">Stock movement sheet<span aria-hidden="true"> &rarr;</span></a>{% endif %}
-    {% if inventory_access %}<a href="{% url 'pandoraapp:reorder' %}">Reorder report<span aria-hidden="true"> &rarr;</span></a>{% endif %}
-  </div>
-</section>
-{% endif %}
-{% if financial_access or expense_access %}
-<section>
-  <h2>Finances and performance</h2>
-  <div class="actions">
-    {% if financial_access %}<a href="{% url 'pandoraapp:sales_report' %}">Sales summary<span aria-hidden="true"> &rarr;</span></a>{% endif %}
-    {% if financial_access %}<a href="{% url 'pandoraapp:profit_report' %}">Basic profit/loss<span aria-hidden="true"> &rarr;</span></a>{% endif %}
-    {% if financial_access %}<a href="{% url 'pandoraapp:performance_report' %}">Fast/slow-selling products<span aria-hidden="true"> &rarr;</span></a>{% endif %}
-    {% if expense_access %}<a href="{% url 'pandoraapp:expenses' %}">Operating expenses<span aria-hidden="true"> &rarr;</span></a>{% endif %}
-  </div>
-</section>
-{% endif %}
-</aside></div>
+<div class="overview-grid">
+  {% if inventory_access %}
+  <section><h2>Inventory overview <small>Active products</small></h2>
+    <div class="scroll"><table>
+      <thead><tr><th>Product</th><th>Category</th><th>Stock</th><th>Unit price</th><th>Status</th></tr></thead>
+      <tbody>{% for item in inventory_rows %}
+      <tr><td><a href="{% url 'pandoraapp:products' %}?q={{ item.sku|urlencode }}">{{ item.name }}</a></td><td>{{ item.category }}</td><td>{{ item.current_stock }}</td><td>₱{{ item.selling_price|floatformat:"2g" }}</td><td>{% if item.current_stock == 0 %}<span class="stock-tag out-stock">Out of stock</span>{% elif item.current_stock <= item.reorder_level %}<span class="stock-tag warn">Low stock</span>{% else %}<span class="stock-tag ok">In stock</span>{% endif %}</td></tr>
+      {% empty %}<tr><td colspan="5">No active products.</td></tr>{% endfor %}</tbody>
+    </table></div>
+  </section>
+  {% include 'pandoraapp/stock_alerts.html' %}
+  {% endif %}
+  {% if other_cards %}
+  <section class="summary"><h2>Store summary</h2>{% for label,value,money in other_cards %}<div class="rank">{{ label }}<b>{% if money %}₱{{ value|floatformat:"2g" }}{% else %}{{ value }}{% endif %}</b></div>{% endfor %}</section>
+  {% endif %}
+</div>
 {% endblock %}

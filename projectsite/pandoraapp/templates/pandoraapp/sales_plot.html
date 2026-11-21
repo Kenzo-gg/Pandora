@@ -1,0 +1,22 @@
+<section class="revenue-panel">
+  <div class="plot-heading">
+    <div><h2>Revenue analytics</h2><p>{{ start|date:"M j" }} – {{ today|date:"M j, Y" }}</p></div>
+    <span class="chart-key">Completed sales · PHP</span>
+  </div>
+  <div class="plot-area">
+    <div class="scale" aria-hidden="true"><span>{% if revenue %}₱{{ peak|floatformat:"-2g" }}{% endif %}</span><span>₱0</span></div>
+    <div class="plot-data">
+      <div class="bar-chart">
+        {% for first,last,value in buckets %}
+        <div class="bar-slot">
+          <span class="bar" tabindex="0" style="--height:{% widthratio value peak 100 %}%" aria-label="{{ first|date:'M j' }} to {{ last|date:'M j' }}, ₱{{ value|floatformat:'2g' }}">
+            <span class="bar-tip">{{ first|date:"M j" }}{% if first != last %}–{{ last|date:"M j" }}{% endif %}<br>₱{{ value|floatformat:"2g" }}</span>
+          </span>
+        </div>
+        {% endfor %}
+        {% if not revenue %}<p class="chart-empty">No revenue in this period.</p>{% endif %}
+      </div>
+      <div class="axis" aria-hidden="true">{% for first,last,value in buckets %}<span>{{ first|date:"M j" }}</span>{% endfor %}</div>
+    </div>
+  </div>
+</section>

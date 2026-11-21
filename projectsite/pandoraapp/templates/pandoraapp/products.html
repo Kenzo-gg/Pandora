@@ -1,11 +1,16 @@
 {% extends 'pandoraapp/base.html' %}
 {% block content %}
 <h1>Products</h1>
-<form method="get">
-  <label for="search">Search by name, SKU, brand or category</label>
-  <input id="search" name="q" value="{{ q }}" maxlength="100" type="search">
-  <button>Search</button>
+<form method="get" class="list-filters product-filter">
+  {% for field in filter_form %}
+  <div class="filter-field{% if field.name == 'q' %} product-search{% endif %}">
+    {{ field.label_tag }}{{ field }}{{ field.errors }}
+  </div>
+  {% endfor %}
+  <div class="product-filter-actions"><button>Apply filters</button>
+    <a href="{% url 'pandoraapp:products' %}">Reset</a></div>
 </form>
+<p class="product-result-count" role="status">{{ page.paginator.count }} product{{ page.paginator.count|pluralize }} found</p>
 <table>
   <thead><tr><th>SKU</th><th>Product</th><th>Category</th><th>Price</th><th>Available</th></tr></thead>
   <tbody>
@@ -16,5 +21,11 @@
   {% empty %}<tr><td colspan="5">No products match your search.</td></tr>{% endfor %}
   </tbody>
 </table>
-{% include 'pandoraapp/pagination.html' %}
+{% if page.has_other_pages %}
+<nav aria-label="Product pages">
+  {% if page.has_previous %}<a href="?{{ filter_query }}&amp;page={{ page.previous_page_number }}">Previous</a>{% endif %}
+  <span>Page {{ page.number }} of {{ page.paginator.num_pages }}</span>
+  {% if page.has_next %}<a href="?{{ filter_query }}&amp;page={{ page.next_page_number }}">Next</a>{% endif %}
+</nav>
+{% endif %}
 {% endblock %}

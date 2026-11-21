@@ -1,18 +1,21 @@
 from datetime import timedelta
 from uuid import uuid4
 
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core import signing
 from django.core.exceptions import PermissionDenied
 from django.core.paginator import Paginator
 from django.db import transaction
-from django.db.models import Q, Sum
+from django.db.models import Count, F, Q, Sum
 from django.http import HttpResponseBadRequest
 from django.http import HttpResponse
 from django.utils import timezone
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_GET, require_POST, require_http_methods
 
+from .navigation import access_for
+from .product_filters import ProductFilterForm
 from . import services
 from .forms import (CancellationForm, ConfirmationForm, PaymentForm, PurchaseHeaderForm,
                     PurchaseLines, SaleHeaderForm, SaleLines)
@@ -87,53 +90,69 @@ def document(user, kind, pk, *, lock=False):
 @login_required(login_url='/login/')
 @require_GET
 def home(request):
-    groups = set(request.user.groups.values_list('name', flat=True))
-    admin = request.user.is_superuser or 'Admin' in groups
-    inventory = admin or 'Inventory Staff' in groups
-    sales = admin or 'Cashier' in groups
-    context = {
-        'financial_access': admin and request.user.has_perm('pandoraapp.view_sale'),
-        'expense_access': admin and request.user.has_perm('pandoraapp.view_operatingexpense'),
-        'inventory_access': inventory and request.user.has_perm('pandoraapp.view_product'),
-        'purchase_history_access': inventory and request.user.has_perm('pandoraapp.change_purchase'),
-        'purchase_create_access': inventory and request.user.has_perm('pandoraapp.add_purchase'),
-        'sale_history_access': sales and request.user.has_perm('pandoraapp.change_sale'),
-        'sale_create_access': sales and request.user.has_perm('pandoraapp.add_sale'),
-        'catalog_access': (inventory and request.user.has_perm('pandoraapp.view_product'))
-            or (sales and request.user.has_perm('pandoraapp.change_sale')),
-    }
+    context = access_for(request.user)
     today = timezone.now().astimezone(MANILA).date()
+    context['today'] = today
     month = (today.replace(day=1), today)
     cards = []
+    other_cards = []
     recent = []
     if context['financial_access']:
         completed = Sale.objects.filter(status='completed')
-        total = completed.filter(sale_date__range=month).aggregate(value=Sum('total_amount'))['value']
-        cards.append(('Sales this month', total or 0, True))
-        start = today - timedelta(days=6)
+        periods = {'7D': 7, '30D': 30, '3M': 90, '1Y': 365}
+        period = request.GET.get('period', '7D')
+        if period not in periods:
+            period = '7D'
+        context.update(period=period, periods=periods)
+        start = today - timedelta(days=periods[period] - 1)
         daily = dict(completed.filter(sale_date__range=(start, today)).values('sale_date')
                      .annotate(total=Sum('total_amount')).values_list('sale_date', 'total'))
         context['days'] = [(start + timedelta(days=i), daily.get(start + timedelta(days=i), 0))
-                           for i in range(7)]
-        context['peak'] = max(daily.values(), default=0) or 1
-        context['top_products'] = (SaleItem.objects.filter(sale__status='completed', sale__sale_date__range=month)
+                           for i in range(periods[period])]
+        sales = completed.filter(sale_date__range=(start, today))
+        revenue = sum(daily.values())
+        cards.extend([('Completed sales', sales.count(), False, 'Transactions in this period', 'receipt'),
+                      ('Total revenue', revenue, True, 'Completed sales in this period', 'trend')])
+        context.update(start=start, revenue=revenue)
+        # Keep long ranges legible by grouping adjacent days into at most ten bars.
+        step = (periods[period] + 9) // 10
+        buckets = []
+        for offset in range(0, periods[period], step):
+            chunk = context['days'][offset:offset + step]
+            buckets.append((chunk[0][0], chunk[-1][0], sum(amount for _, amount in chunk)))
+        context.update(buckets=buckets, peak=max(row[2] for row in buckets) or 1)
+        context['top_products'] = (SaleItem.objects.filter(sale__status='completed', sale__sale_date__range=(start, today))
                                    .values('product_id', 'product__name').annotate(units=Sum('quantity'))
                                    .order_by('-units', 'product_id')[:4])
     if context['purchase_history_access']:
         purchases = Purchase.objects.filter(status='completed', order_date__range=month)
-        cards.append(('Purchases this month', purchases.aggregate(value=Sum('total_cost'))['value'] or 0, True))
+        other_cards.append(('Purchases this month', purchases.aggregate(value=Sum('total_cost'))['value'] or 0, True))
         for row in Purchase.objects.order_by('-created_at', '-pk')[:5]:
-            recent.append((row.created_at, row.reference_no, 'Purchase', row.get_status_display()))
+            recent.append((row.created_at, row.reference_no, 'Purchase', row.get_status_display(), row.total_cost, row.pk))
     if context['sale_history_access']:
-        rows = Sale.objects.all() if admin else Sale.objects.filter(cashier_auth=request.user)
+        rows = Sale.objects.all() if context['admin_access'] else Sale.objects.filter(cashier_auth=request.user)
         for row in rows.order_by('-created_at', '-pk')[:5]:
-            recent.append((row.created_at, row.receipt_no, 'Sale', row.get_status_display()))
+            recent.append((row.created_at, row.receipt_no, 'Sale', row.get_status_display(), row.total_amount, row.pk))
     if context['inventory_access']:
-        cards.append(('Products to reorder', products_needing_reorder().count(), False))
+        products = Product.objects.filter(is_active=True)
+        counts = products.aggregate(total=Count('pk'), out=Count('pk', filter=Q(current_stock=0)),
+                                    low=Count('pk', filter=Q(current_stock__gt=0, current_stock__lte=F('reorder_level'))))
+        total, low, out = counts['total'], counts['low'], counts['out']
+        context.update(product_count=total, low_count=low, out_count=out, available_count=total-low-out,
+                       available_end=round(100*(total-low-out)/total) if total else 0,
+                       low_end=round(100*(total-out)/total) if total else 0)
+        if not context['financial_access']:
+            cards.append(('Active products', total, False, 'Current catalog', 'package'))
+        if context['financial_access']:
+            value = products.aggregate(total=Sum(F('current_stock') * F('cost_price')))['total']
+            cards.append(('Inventory value', value or 0, True, 'Active stock at cost', 'package'))
+        context['inventory_rows'] = products.select_related('category').order_by('name', 'pk')[:8]
+        context['alerts'] = products_needing_reorder()[:4]
+        other_cards.append(('Products to reorder', products_needing_reorder().count(), False))
     if context['expense_access']:
         expenses = OperatingExpense.objects.filter(voided_at__isnull=True, expense_date__range=month)
-        cards.append(('Expenses this month', expenses.aggregate(value=Sum('amount'))['value'] or 0, True))
-    context.update(cards=cards, recent=sorted(recent, key=lambda row: row[0], reverse=True)[:5])
+        other_cards.append(('Expenses this month', expenses.aggregate(value=Sum('amount'))['value'] or 0, True))
+    context.update(cards=cards, other_cards=other_cards, recent=sorted(recent, key=lambda row: row[0], reverse=True)[:5])
     return render(request, 'pandoraapp/home.html', context)
 
 
@@ -167,6 +186,7 @@ def create(request, kind):
                 obj = services.create_sale_draft(actor=request.user,
                     receipt_no=header.cleaned_data['reference'],
                     sale_date=header.cleaned_data['date'], lines=items)
+            messages.success(request, f'{kind.title()} draft saved.')
             return redirect('pandoraapp:' + kind + '_detail', pk=obj.pk)
         except services.StockError as exc:
             header.add_error(None, exc)
@@ -221,6 +241,7 @@ def post_transaction(request, kind, pk):
             else:
                 services.complete_sale(**arguments, payment_method=form.cleaned_data['payment_method'],
                                        amount_paid=form.cleaned_data['amount_paid'])
+            messages.success(request, 'Purchase received.' if kind == 'purchase' else 'Sale completed.')
             return redirect('pandoraapp:' + kind + '_detail', pk=pk)
         except (signing.BadSignature, KeyError, TypeError, AttributeError):
             form.add_error(None, 'Confirmation expired or invalid. Reload and review this transaction.')
@@ -239,6 +260,7 @@ def cancel(request, kind, pk):
         function = services.cancel_purchase if kind == 'purchase' else services.cancel_sale
         try:
             function(actor=request.user, **{kind + '_id': pk}, reason=form.cleaned_data['reason'])
+            messages.success(request, f'{kind.title()} cancelled.')
             return redirect('pandoraapp:' + kind + '_detail', pk=pk)
         except services.StockError as exc:
             form.add_error(None, exc)
@@ -259,16 +281,38 @@ def products(request):
         services._authorize(request.user, services.SALE_ROLES, 'change_sale')
     else:
         services._authorize(request.user, services.PURCHASE_ROLES, 'view_product')
-    query = request.GET.get('q', '').strip()[:100]
+    form = ProductFilterForm(request.GET)
     rows = Product.objects.filter(is_active=True)
-    if query:
-        rows = rows.filter(Q(name__icontains=query) | Q(sku__icontains=query)
-                           | Q(brand__icontains=query) | Q(category__name__icontains=query))
+    if form.is_valid():
+        filters = form.cleaned_data
+        query = filters['q']
+        if query:
+            rows = rows.filter(Q(name__icontains=query) | Q(sku__icontains=query)
+                               | Q(brand__icontains=query) | Q(category__name__icontains=query))
+        if filters['category']:
+            rows = rows.filter(category=filters['category'])
+        if filters['brand']:
+            rows = rows.filter(brand=filters['brand'])
+        if filters['stock'] == 'available':
+            rows = rows.filter(current_stock__gt=0)
+        elif filters['stock'] == 'low':
+            rows = rows.filter(current_stock__gt=0, current_stock__lte=F('reorder_level'))
+        elif filters['stock'] == 'out':
+            rows = rows.filter(current_stock=0)
+        if filters['min_price'] is not None:
+            rows = rows.filter(selling_price__gte=filters['min_price'])
+        if filters['max_price'] is not None:
+            rows = rows.filter(selling_price__lte=filters['max_price'])
+    else:
+        rows = rows.none()
     # Project only selling-catalog fields so costs never enter the response context.
     rows = rows.order_by('name', 'pk').values('sku', 'name', 'brand', 'category__name',
                                             'selling_price', 'current_stock')
+    params = request.GET.copy()
+    params.pop('page', None)
     return render(request, 'pandoraapp/products.html', {
-        'page': Paginator(rows, 25).get_page(request.GET.get('page')), 'q': query})
+        'page': Paginator(rows, 25).get_page(request.GET.get('page')),
+        'filter_form': form, 'filter_query': params.urlencode()})
 
 
 @login_required(login_url='/login/')

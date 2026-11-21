@@ -1,5 +1,6 @@
 from uuid import uuid4
 
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core import signing
 from django.core.exceptions import ValidationError
@@ -102,6 +103,7 @@ def expense_create(request):
                 raise signing.BadSignature()
             values = {key: value for key, value in form.cleaned_data.items() if key != 'token'}
             record_expense(actor=request.user, request_id=data['request_id'], **values)
+            messages.success(request, 'Expense recorded.')
             return redirect('pandoraapp:expenses')
         except (signing.BadSignature, KeyError, ValueError):
             form.add_error(None, 'Expense form expired or invalid. Reload the page before entering this expense.')
@@ -117,6 +119,7 @@ def expense_category(request):
     form = ExpenseCategoryForm(request.POST if request.method == 'POST' else None)
     if request.method == 'POST' and form.is_valid():
         ExpenseCategory.objects.get_or_create(name=form.cleaned_data['name'])
+        messages.success(request, 'Expense category is available.')
         return redirect('pandoraapp:expense_create')
     return render(request, 'pandoraapp/simple_form.html', {'form': form, 'title': 'Add expense category', 'button': 'Save category'})
 
@@ -129,6 +132,7 @@ def expense_void(request, pk):
     form = CancellationForm(request.POST if request.method == 'POST' else None)
     if request.method == 'POST' and form.is_valid():
         void_expense(actor=request.user, expense_id=expense.pk, reason=form.cleaned_data['reason'])
+        messages.success(request, 'Expense voided.')
         return redirect('pandoraapp:expenses')
     return render(request, 'pandoraapp/simple_form.html', {'form': form,
         'title': f'Void expense #{expense.pk}', 'description': f'{expense.description} — PHP {expense.amount}', 'button': 'Void expense'})

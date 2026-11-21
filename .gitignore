@@ -1,0 +1,12 @@
+# Python caches
+__pycache__/
+*.py[cod]
+
+# Local secrets and environments
+.env
+.venv/
+
+# Local tooling output
+graphify-out/
+.claude/settings.local.json
+.claude/launch.json

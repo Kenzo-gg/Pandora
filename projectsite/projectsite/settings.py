@@ -10,10 +10,36 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.1/ref/settings/
 """
 
+import os
 from pathlib import Path
+
+from django.core.exceptions import ImproperlyConfigured
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+
+def _load_env_file(path):
+    """Read KEY=VALUE lines from projectsite/.env without overriding real environment variables."""
+    if not path.exists():
+        return
+    for line in path.read_text(encoding='utf-8').splitlines():
+        line = line.strip()
+        if not line or line.startswith('#') or '=' not in line:
+            continue
+        key, value = line.split('=', 1)
+        os.environ.setdefault(key.strip(), value.strip())
+
+
+def env(name, default=None):
+    value = os.environ.get(name, default)
+    if value is None:
+        raise ImproperlyConfigured(
+            f'Set {name} in projectsite/.env or the environment (see .env.example).')
+    return value
+
+
+_load_env_file(BASE_DIR / '.env')
 
 
 # Quick-start development settings - unsuitable for production
@@ -76,11 +102,11 @@ WSGI_APPLICATION = 'projectsite.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'pandoradb',
-        'USER': 'root',
-        'PASSWORD': 'kenzo2341',
-        'HOST': '127.0.0.1',
-        'PORT': '3306',
+        'NAME': env('PANDORA_DB_NAME', 'pandoradb'),
+        'USER': env('PANDORA_DB_USER', 'root'),
+        'PASSWORD': env('PANDORA_DB_PASSWORD'),
+        'HOST': env('PANDORA_DB_HOST', '127.0.0.1'),
+        'PORT': env('PANDORA_DB_PORT', '3306'),
     }
 }
 

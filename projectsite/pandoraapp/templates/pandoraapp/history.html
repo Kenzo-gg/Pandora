@@ -10,6 +10,8 @@
     <option value="completed" {% if status == 'completed' %}selected{% endif %}>Completed</option>
     <option value="cancelled" {% if status == 'cancelled' %}selected{% endif %}>Cancelled</option>
   </select></div>
+  <div class="filter-field"><label for="start">From</label><input id="start" name="start" type="date" value="{{ start|date:'Y-m-d' }}"></div>
+  <div class="filter-field"><label for="end">To</label><input id="end" name="end" type="date" value="{{ end|date:'Y-m-d' }}"></div>
   <button>Search</button>
 </form>
 <table>

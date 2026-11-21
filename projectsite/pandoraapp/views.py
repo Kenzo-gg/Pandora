@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import date, timedelta
 from uuid import uuid4
 
 from django.contrib import messages
@@ -332,7 +332,16 @@ def history(request, kind):
     if query:
         field = 'reference_no' if kind == 'purchase' else 'receipt_no'
         rows = rows.filter(**{field + '__icontains': query})
+    date_field = 'order_date' if kind == 'purchase' else 'sale_date'
+    dates = {}
+    for key, lookup in (('start', '__gte'), ('end', '__lte')):
+        try:
+            dates[key] = date.fromisoformat(request.GET.get(key, ''))
+        except ValueError:
+            dates[key] = None
+        if dates[key]:
+            rows = rows.filter(**{date_field + lookup: dates[key]})
     rows = rows.order_by('-created_at', '-pk')
     return render(request, 'pandoraapp/history.html', {
         'kind': kind, 'page': Paginator(rows, 25).get_page(request.GET.get('page')),
-        'q': query, 'status': status})
+        'q': query, 'status': status, 'start': dates['start'], 'end': dates['end']})

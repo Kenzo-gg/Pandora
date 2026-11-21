@@ -2,6 +2,79 @@
 <h1>New {{ kind }}</h1><form method="post">{% csrf_token %}{{ header.as_p }}{{ lines.management_form }}{{ lines.non_form_errors }}
 <div id="lines">{% for form in lines %}<fieldset>{{ form.as_p }}</fieldset>{% endfor %}</div>
 <template id="empty-line"><fieldset>{{ lines.empty_form.as_p }}</fieldset></template>
+<p class="sale-total">Estimated total <b id="grand-total" aria-live="polite">₱0.00</b> <small>{% if kind == 'sale' %}Final total, payment and change are confirmed on the next step.{% else %}Confirmed when the draft is saved.{% endif %}</small></p>
 <button type="button" id="add-line">Add item</button><button>Save draft</button></form>
-<script>const count=document.getElementById('id_items-TOTAL_FORMS');const add=document.getElementById('add-line');add.addEventListener('click',()=>{const index=Number(count.value);if(index>=50)return;document.getElementById('lines').insertAdjacentHTML('beforeend',document.getElementById('empty-line').innerHTML.replaceAll('__prefix__',String(index)));count.value=index+1;add.disabled=index+1>=50;});</script>
+<script>
+(() => {
+  const lines = document.getElementById('lines');
+  const count = document.getElementById('id_items-TOTAL_FORMS');
+  const add = document.getElementById('add-line');
+  const grand = document.getElementById('grand-total');
+  const money = n => '₱' + n.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+
+  function update() {
+    let total = 0;
+    for (const fs of lines.querySelectorAll('fieldset')) {
+      const select = fs.querySelector('select[name$="-product"]');
+      const qty = fs.querySelector('input[name$="-quantity"]');
+      const cost = fs.querySelector('input[name$="-unit_cost"]');
+      const info = fs.querySelector('.line-info');
+      if (!select || !info) continue;
+      const option = select.selectedOptions[0];
+      info.classList.remove('warn');
+      if (!option || !option.value) { info.textContent = ''; continue; }
+      const price = cost ? Number(cost.value || 0) : Number(option.dataset.price);
+      const quantity = Math.max(0, Number(qty && qty.value || 0));
+      const stock = Number(option.dataset.stock);
+      const line = price * quantity;
+      total += line;
+      let text = (cost ? 'Unit cost ' : 'Unit price ') + money(price) + ' × ' + quantity + ' = ' + money(line) + ' · ' + stock + ' in stock';
+      if (!cost && quantity > stock) { text += ' · not enough stock'; info.classList.add('warn'); }
+      info.textContent = text;
+    }
+    grand.textContent = money(total);
+  }
+
+  function enhance(fs) {
+    const select = fs.querySelector('select[name$="-product"]');
+    if (!select || fs.dataset.ready) return;
+    fs.dataset.ready = '1';
+    const search = document.createElement('input');
+    search.type = 'search';
+    search.className = 'line-search';
+    search.placeholder = 'Search by name, SKU or category';
+    search.setAttribute('aria-label', 'Search products');
+    select.parentElement.insertBefore(search, select);
+    search.addEventListener('input', () => {
+      const query = search.value.trim().toLowerCase();
+      let first = null;
+      for (const option of select.options) {
+        if (!option.value) continue;
+        const match = !query || (option.dataset.search || '').includes(query);
+        option.hidden = !match;
+        if (match && !first) first = option;
+      }
+      const current = select.selectedOptions[0];
+      if (query && first && (!current || !current.value || current.hidden)) select.value = first.value;
+      update();
+    });
+    const info = document.createElement('p');
+    info.className = 'line-info';
+    fs.appendChild(info);
+  }
+
+  lines.addEventListener('input', update);
+  lines.addEventListener('change', update);
+  add.addEventListener('click', () => {
+    const index = Number(count.value);
+    if (index >= 50) return;
+    lines.insertAdjacentHTML('beforeend', document.getElementById('empty-line').innerHTML.replaceAll('__prefix__', String(index)));
+    count.value = index + 1;
+    add.disabled = index + 1 >= 50;
+    enhance(lines.lastElementChild);
+  });
+  lines.querySelectorAll('fieldset').forEach(enhance);
+  update();
+})();
+</script>
 {% endblock %}

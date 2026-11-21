@@ -214,6 +214,18 @@ table a { font-weight: 550; }
 input, select, textarea, button { max-width: 100%; padding: 8px 11px; border: 1px solid var(--field-border); border-radius: 8px; background: var(--card); color: var(--ink); }
 button { cursor: pointer; color: #fff; background: var(--action); border-color: transparent; font-weight: 600; }
 button:hover { filter: brightness(.96); }
+main form > button + button { margin-left: 10px; }
+select:not([multiple]) {
+  appearance: none; -webkit-appearance: none; padding-right: 36px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%238a8799' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 12px center; background-size: 12px 8px;
+}
+.line-search { width: 100%; }
+.line-info { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
+.line-info.warn { color: #e2725b; font-weight: 600; }
+.sale-total { display: flex; align-items: baseline; gap: 10px; margin: 4px 0 16px; font-size: 15px; }
+.sale-total b { font-size: 22px; letter-spacing: -.02em; }
+.sale-total small { color: var(--muted); }
 button[name=format], #add-line { color: var(--blue); background: var(--raised); }
 fieldset { margin-top: 14px; } legend { font-weight: 650; }
 main form p:has(input,select,textarea), .filter-field { display: grid; gap: 5px; max-width: 36rem; }
@@ -227,7 +239,7 @@ main form p:first-of-type { margin-top: 0; }
 .signin { min-height: 100svh; display: grid; place-items: center; max-width: none; background: radial-gradient(ellipse at 10% 20%, #403856, transparent 58%), var(--rail); }
 .signin section { width: min(100%, 390px); padding: 32px; margin: 0; }
 .signin .brand { margin-bottom: 32px; } .signin .brand b { display: flex; }
-.signin button { width: 100%; }
+.signin form button { width: 100%; }
 @media (max-width: 1140px) {
   .crumb { display: none; }
 }

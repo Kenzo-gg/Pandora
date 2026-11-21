@@ -18,8 +18,32 @@ class SaleHeaderForm(forms.Form):
     date = forms.DateField(initial=timezone.localdate, widget=forms.DateInput(attrs={'type': 'date'}))
 
 
+class ProductSelect(forms.Select):
+    """Adds price, stock and search text to each option for the line search and running total."""
+
+    def create_option(self, name, value, label, selected, index, subindex=None, attrs=None):
+        option = super().create_option(name, value, label, selected, index, subindex, attrs)
+        product = getattr(value, 'instance', None)
+        if product is not None:
+            option['attrs'].update({
+                'data-price': str(product.selling_price),
+                'data-stock': str(product.current_stock),
+                'data-search': ' '.join(filter(None, [product.sku, product.name, product.brand,
+                                                      product.category.name])).lower(),
+            })
+        return option
+
+
+class ProductChoiceField(forms.ModelChoiceField):
+    widget = ProductSelect
+
+    def label_from_instance(self, obj):
+        return f'{obj.name} ({obj.sku}) · {obj.category.name}'
+
+
 class SaleLineForm(forms.Form):
-    product = forms.ModelChoiceField(queryset=Product.objects.filter(is_active=True))
+    product = ProductChoiceField(
+        queryset=Product.objects.filter(is_active=True).select_related('category').order_by('name'))
     quantity = forms.IntegerField(min_value=1, max_value=MAX_QUANTITY)
 
 

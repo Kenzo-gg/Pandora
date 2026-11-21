@@ -138,6 +138,26 @@ class TransactionPagesTests(Fixtures, TestCase):
         response = self.client.get(self.url('purchase_history'), {'page': 2})
         self.assertEqual(len(response.context['page']), 2)
 
+    def test_history_date_filter_and_bad_dates(self):
+        early, late = self.purchase(), self.purchase()
+        Purchase.objects.filter(pk=early.pk).update(order_date='2026-10-01')
+        Purchase.objects.filter(pk=late.pk).update(order_date='2026-11-15')
+        url = self.url('purchase_history')
+        response = self.client.get(url, {'start': '2026-11-01', 'end': '2026-11-30'})
+        self.assertEqual(list(response.context['page']), [late])
+        response = self.client.get(url, {'end': '2026-10-31'})
+        self.assertEqual(list(response.context['page']), [early])
+        response = self.client.get(url, {'start': 'not-a-date'})
+        self.assertEqual(len(response.context['page']), 2)
+
+    def test_sale_form_lists_price_stock_and_search_text(self):
+        self.product.refresh_from_db()
+        response = self.client.get(self.url('sale_create'))
+        self.assertContains(response, 'data-price="%s"' % self.product.selling_price)
+        self.assertContains(response, 'data-stock="%s"' % self.product.current_stock)
+        self.assertContains(response, 'data-search="%s' % self.product.sku.lower())
+        self.assertContains(response, 'Estimated total')
+
     def test_sales_report_totals_and_periods(self):
         self.receive(self.purchase())
         sale = self.sale(quantity=2)

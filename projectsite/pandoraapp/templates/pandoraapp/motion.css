@@ -1,11 +1,17 @@
-:root { --ease-out:cubic-bezier(.22,1,.36,1); }
+:root { --ease-out:cubic-bezier(.22,1,.36,1); --ease-drawer:cubic-bezier(.32,.72,0,1); }
 .metric-number { position:relative; font-variant-numeric:tabular-nums; }
 .metrics article .metric-number span { color:inherit; }
 .metric-frame { position:absolute; inset:0; }
 .metric-running .metric-final { opacity:0; }
 .toasts { position:fixed; bottom:18px; right:18px; max-width:min(25rem,calc(100vw - 36px)); z-index:20; display:grid; gap:8px; }
-.toast { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 14px; background:var(--panel-solid); color:var(--ink); border:1px solid var(--card-edge); border-left:4px solid #35b9df; border-radius:14px; box-shadow:0 12px 30px rgba(2,20,30,.25); }
-.toast.success {border-left-color:#16a34a;} .toast.error {border-left-color:#ef4444;} .toast.warning {border-left-color:#f59e0b;font-weight:600;}
+.toast { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 14px; background:var(--panel-solid); color:var(--ink); border:1px solid var(--card-edge); border-left:4px solid var(--tone); border-radius:14px; box-shadow:0 12px 30px rgba(2,20,30,.25); position:relative; overflow:hidden; --tone:#35b9df; }
+.toast.success {--tone:#16a34a;} .toast.error {--tone:#ef4444;} .toast.warning {--tone:#f59e0b;font-weight:600;}
+/* Time left before the toast closes; hidden while paused and on warnings, which never auto-close. */
+.toast::after {content:"";position:absolute;left:0;right:0;bottom:0;height:3px;background:var(--tone);opacity:.55;transform-origin:left;transform:scaleX(0);}
+.toast.timing::after {transform:scaleX(1);}
+/* Busy submit button: label hidden but keeps its width, spinner drawn in the label colour. */
+button[aria-busy=true] {position:relative;-webkit-text-fill-color:transparent;cursor:progress;}
+button[aria-busy=true]::after {content:"";position:absolute;inset:0;margin:auto;width:1em;height:1em;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;}
 .toast button {background:transparent;color:var(--ink);padding:2px 7px;font-size:18px;border-radius:8px;}
 button:disabled {opacity:.5;cursor:not-allowed;}
 [aria-invalid=true] {border-color:#c03535;}
@@ -18,20 +24,52 @@ nav a {position:relative;}
   @keyframes enter {from {opacity:0;transform:translateY(8px);}}
   @keyframes grow {from {transform:scaleY(.015);}}
   @keyframes reveal-ring {from {clip-path:circle(0 at center);} to {clip-path:circle(72% at center);}}
-  .dash-head,main>h1,.metrics article,.overview-grid section,main .scroll,.toast,.errorlist,.account[open] form {animation:enter 360ms var(--ease-out) backwards;}
-  .metrics article:nth-child(2){animation-delay:50ms;}.metrics article:nth-child(3){animation-delay:100ms;}
-  .bar {transform-origin:bottom;animation:grow 620ms var(--ease-out) backwards;}
-  .ring {animation:reveal-ring 650ms var(--ease-out);}
+  @keyframes pop {from {opacity:0;transform:scale(.96);}}
+  /* Page titles come into focus (fade, 6px rise, 4px blur to sharp); the line under them only fades, 120ms behind.
+     Tables still appear instantly. */
+  @keyframes title-in {from {opacity:0;transform:translateY(6px);filter:blur(4px);}}
+  @keyframes fade-in {from {opacity:0;}}
+  main h1 {animation:title-in 600ms var(--ease-out) backwards;}
+  main h1 + p {animation:fade-in 600ms var(--ease-out) 120ms backwards;}
+  .metrics article,.overview-grid section,.toast,.errorlist {animation:enter 420ms var(--ease-out) backwards;}
+  .account[open] form {transform-origin:top right;animation:pop 180ms var(--ease-out);}
+  .account .ui-icon {transition:transform 200ms var(--ease-out);}
+  /* Dashboard reads top to bottom as one wave: head, then cards with shrinking gaps, then panels. */
+  .metrics article:nth-child(2){animation-delay:70ms;}.metrics article:nth-child(3){animation-delay:125ms;}
+  .metrics article:nth-child(4){animation-delay:170ms;}.metrics article:nth-child(n+5){animation-delay:205ms;}
+  .overview-grid section {animation-delay:220ms;}
+  /* Bars rise left to right with gaps that shrink (sqrt), starting with their panel. */
+  .bar {transform-origin:bottom;animation:grow 760ms var(--ease-out) backwards;animation-delay:calc(220ms + sqrt(var(--i, 0)) * 55ms);}
+  .ring {animation:reveal-ring 900ms var(--ease-out) 220ms backwards;}
+  /* After a period change the same panels stay put; the dissolve and the counters carry the change. */
+  .swapped :is(article,section,.bar,.ring) {animation:none;}
+  /* Moving between pages: the old page dissolves over the new one, which plays its own entrance. */
+  @view-transition {navigation:auto;}
+  ::view-transition-old(root) {animation:vt-out 320ms var(--ease-out) both;}
+  ::view-transition-new(root) {animation:none;}
+  @keyframes vt-out {to {opacity:0;}}
   .bar span,.toast {transition:opacity 160ms,transform 160ms;}
   .toast.leaving {opacity:0;transform:translateY(6px);}
-  button,a,td,input,select,textarea,.status,.legend div {transition:background-color 160ms,border-color 160ms,box-shadow 160ms,transform 160ms;}
-  button:not(:disabled):active {transform:translateY(1px);}
-  nav a .ui-icon{transition:transform 220ms var(--ease-out);}nav a:is(:hover,[aria-current]) .ui-icon{transform:translateX(2px);}
-  #rail,.workspace {transition-duration:240ms;}
-  .metrics article {transition:transform 220ms var(--ease-out),border-color 220ms,box-shadow 220ms;}
-  @media(hover:hover){.metrics article:hover{transform:translateY(-2px);border-color:#35b9df80;box-shadow:0 14px 32px rgba(6,45,66,.14);}button:not(:disabled):hover{box-shadow:0 2px 7px #071f3d19;}}
+  @keyframes drain {from {transform:scaleX(1);} to {transform:scaleX(0);}}
+  .toast.timing::after {animation:drain 8s linear forwards;} /* 8s must match DISMISS_MS in motion.js */
+  /* Errors shake once, gently, right after they land. */
+  @keyframes shake {20%{transform:translateX(-5px);}40%{transform:translateX(4px);}60%{transform:translateX(-3px);}80%{transform:translateX(2px);}}
+  .toast.error {animation:enter 420ms var(--ease-out) backwards,shake 380ms var(--ease-out) 420ms;}
+  @keyframes spin {to {transform:rotate(1turn);}}
+  button[aria-busy=true]::after {animation:spin 700ms linear infinite;}
+  button,a,td,input,select,textarea,.status,.legend div {transition:background-color 160ms,border-color 160ms,box-shadow 160ms,transform 160ms var(--ease-out);}
+  button:not(:disabled):active {transform:scale(.97);}
+  nav a .ui-icon{transition:transform 220ms var(--ease-out);}nav a[aria-current] .ui-icon{transform:translateX(2px);}
+  #rail,.workspace {transition-duration:280ms;transition-timing-function:var(--ease-drawer);}
+  .metrics article {transition:background-color 160ms;}
+  @media(hover:hover){nav a:hover .ui-icon{transform:translateX(2px);}.metrics article:hover{background:var(--hover);}button:not(:disabled):hover{box-shadow:0 2px 7px #071f3d19;}}
 }
 .legend div:hover {background:var(--hover);}
+/* The mobile shade fades with the drawer instead of snapping on and off. */
+@media(max-width:800px) {
+  .rail-shade {display:block;position:fixed;z-index:5;inset:0;background:rgba(2,18,28,.45);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);opacity:0;visibility:hidden;transition:opacity 280ms var(--ease-drawer),visibility 0s 280ms;}
+  .open .rail-shade {opacity:1;visibility:visible;transition-delay:0s;}
+}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after {animation:none!important;transition:none!important;}}
 .enhanced .apply-period {display:none;}
 .center-col[aria-busy=true] .bar-chart {position:relative;}

@@ -1,0 +1,73 @@
+{% extends 'pandoraapp/base.html' %}
+{% block content %}
+<div class="page-head"><h1>{{ supplier.name }}</h1>
+  <div class="page-actions">
+    {% if can_purchase %}<a class="button-link" href="{% url 'pandoraapp:purchase_create' %}?supplier={{ supplier.pk }}">New purchase</a>{% endif %}
+    {% if can_edit %}<a class="button-link secondary" href="{% url 'pandoraapp:supplier_edit' supplier.pk %}">Edit supplier</a>{% endif %}
+  </div>
+</div>
+<p><span class="status">{% if supplier.is_active %}Active{% else %}Inactive — kept for history, not available for new purchases{% endif %}</span></p>
+
+<div class="supplier-grid">
+  <section class="card">
+    <h2>Contact details</h2>
+    <dl class="details">
+      <div><dt>Contact person</dt><dd>{{ supplier.contact_person }}</dd></div>
+      <div><dt>Contact number</dt><dd>{{ supplier.contact_number }}</dd></div>
+      <div><dt>Email</dt><dd>{% if supplier.email %}<a href="mailto:{{ supplier.email }}">{{ supplier.email }}</a>{% else %}—{% endif %}</dd></div>
+      <div><dt>Address</dt><dd>{{ supplier.address|default:"—"|linebreaksbr }}</dd></div>
+    </dl>
+  </section>
+  <section class="card">
+    <h2>Purchase summary</h2>
+    <dl class="details">
+      <div><dt>Completed purchases</dt><dd>{{ summary.count }}</dd></div>
+      <div><dt>Total received</dt><dd>₱{{ summary.total|default:0|floatformat:"2g" }}</dd></div>
+      <div><dt>Last order</dt><dd>{{ summary.last|default:"—" }}</dd></div>
+      <div><dt>Pending orders</dt><dd>{{ summary.pending }}</dd></div>
+    </dl>
+  </section>
+</div>
+
+<h2>Purchase history</h2>
+<form method="get" class="list-filters">
+  <div class="filter-field"><label for="status">Status</label>
+  <select name="status" id="status">
+    <option value="">All statuses</option>
+    <option value="pending" {% if status == 'pending' %}selected{% endif %}>Pending</option>
+    <option value="completed" {% if status == 'completed' %}selected{% endif %}>Completed</option>
+    <option value="cancelled" {% if status == 'cancelled' %}selected{% endif %}>Cancelled</option>
+  </select></div>
+  <div class="filter-field"><label for="start">From</label><input id="start" name="start" type="date" value="{{ start|date:'Y-m-d' }}"></div>
+  <div class="filter-field"><label for="end">To</label><input id="end" name="end" type="date" value="{{ end|date:'Y-m-d' }}"></div>
+  <button>Filter</button>
+</form>
+<table>
+  <thead><tr><th>Reference</th><th>Order date</th><th>Status</th><th class="amount">Lines</th><th>Received</th><th class="amount">Total</th></tr></thead>
+  <tbody>
+  {% for purchase in page %}
+    <tr><td><a href="{% url 'pandoraapp:purchase_detail' purchase.pk %}">{{ purchase.reference_no }}</a></td>
+      <td>{{ purchase.order_date }}</td><td>{{ purchase.get_status_display }}</td>
+      <td class="amount">{{ purchase.line_count }}</td><td>{{ purchase.received_at|date:"M j, Y"|default:"—" }}</td>
+      <td class="amount">₱{{ purchase.total_cost|floatformat:"2g" }}</td></tr>
+  {% empty %}<tr><td colspan="6">No purchases match these filters.</td></tr>{% endfor %}
+  </tbody>
+  {% if page.paginator.count %}<tfoot><tr><td colspan="5">Completed total for these filters</td><td class="amount"><b>₱{{ filtered_total|default:0|floatformat:"2g" }}</b></td></tr></tfoot>{% endif %}
+</table>
+{% if page.has_other_pages %}
+<nav aria-label="Purchase pages">
+  {% if page.has_previous %}<a href="?{{ filter_query }}&amp;page={{ page.previous_page_number }}">Previous</a>{% endif %}
+  <span>Page {{ page.number }} of {{ page.paginator.num_pages }}</span>
+  {% if page.has_next %}<a href="?{{ filter_query }}&amp;page={{ page.next_page_number }}">Next</a>{% endif %}
+</nav>
+{% endif %}
+
+<h2>Products with this preferred supplier</h2>
+{% if products %}
+<table>
+  <thead><tr><th>SKU</th><th>Product</th><th class="amount">In stock</th><th class="amount">Reorder level</th></tr></thead>
+  <tbody>{% for product in products %}<tr><td>{{ product.sku }}</td><td>{{ product.name }}</td>
+    <td class="amount">{{ product.current_stock }}</td><td class="amount">{{ product.reorder_level }}</td></tr>{% endfor %}</tbody>
+</table>
+{% else %}<p>No active products list this supplier as preferred.</p>{% endif %}
+{% endblock %}

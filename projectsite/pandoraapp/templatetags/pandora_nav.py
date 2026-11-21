@@ -20,6 +20,7 @@ def navigation(context, access):
         ('Main', 'products', 'Products', 'package', 'catalog_access'),
         ('Main', 'inventory_report', 'Inventory', 'warehouse', 'inventory_access'),
         ('Main', 'purchase_history', 'Purchases', 'cart', 'purchase_history_access'),
+        ('Main', 'suppliers', 'Suppliers', 'truck', 'supplier_access'),
         ('Management', 'reorder', 'Reorder report', 'alert', 'inventory_access'),
         ('Management', 'movement_report', 'Stock movements', 'transfer', 'inventory_access'),
         ('Management', 'sales_report', 'Sales summary', 'bars', 'financial_access'),

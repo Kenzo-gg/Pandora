@@ -1,6 +1,7 @@
 from django.urls import path
 from . import views
 from . import business_views
+from . import supplier_views
 
 app_name = 'pandoraapp'
 urlpatterns = [path('', views.home, name='home'),
@@ -14,7 +15,11 @@ urlpatterns = [path('', views.home, name='home'),
                path('reports/inventory/', views.inventory_report, name='inventory_report'),
                path('reports/sales/', views.sales_report, name='sales_report'),
                path('products/', views.products, name='products'),
-               path('inventory/reorder/', views.reorder, name='reorder')]
+               path('inventory/reorder/', views.reorder, name='reorder'),
+               path('suppliers/', supplier_views.supplier_list, name='suppliers'),
+               path('suppliers/new/', supplier_views.supplier_edit, name='supplier_create'),
+               path('suppliers/<int:pk>/', supplier_views.supplier_detail, name='supplier_detail'),
+               path('suppliers/<int:pk>/edit/', supplier_views.supplier_edit, name='supplier_edit')]
 for kind, plural, action in [('purchase', 'purchases', 'receive'), ('sale', 'sales', 'complete')]:
     urlpatterns += [
         path(f'{plural}/<int:pk>/print/', business_views.transaction_pdf, {'kind': kind}, name=kind + '_pdf'),

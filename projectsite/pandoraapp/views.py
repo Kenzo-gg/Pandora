@@ -19,7 +19,7 @@ from .product_filters import ProductFilterForm
 from . import services
 from .forms import (CancellationForm, ConfirmationForm, PaymentForm, PurchaseHeaderForm,
                     PurchaseLines, SaleHeaderForm, SaleLines)
-from .models import OperatingExpense, Product, Purchase, Sale, SaleItem
+from .models import OperatingExpense, Product, Purchase, Sale, SaleItem, Supplier
 from .stock_queries import products_needing_reorder, reorder_report
 from .reports import MANILA, SalesReportForm, sales_pdf, sales_summary
 from .inventory_reports import InventoryReportForm, inventory_pdf, inventory_summary
@@ -163,7 +163,10 @@ def create(request, kind):
     header_class = PurchaseHeaderForm if kind == 'purchase' else SaleHeaderForm
     lines_class = PurchaseLines if kind == 'purchase' else SaleLines
     data = request.POST if request.method == 'POST' else None
-    header = header_class(data, initial={'reference': uuid4().hex.upper()})
+    initial = {'reference': uuid4().hex.upper()}
+    if kind == 'purchase' and request.GET.get('supplier', '').isdigit():
+        initial['supplier'] = int(request.GET['supplier'])
+    header = header_class(data, initial=initial)
     lines = lines_class(data, prefix='items')
     header_valid = header.is_valid() if data is not None else False
     lines_valid = lines.is_valid() if data is not None else False
@@ -332,6 +335,16 @@ def history(request, kind):
     if query:
         field = 'reference_no' if kind == 'purchase' else 'receipt_no'
         rows = rows.filter(**{field + '__icontains': query})
+    supplier = None
+    suppliers = []
+    if kind == 'purchase':
+        suppliers = Supplier.objects.order_by('-is_active', 'name')
+        supplier_id = request.GET.get('supplier', '')
+        if supplier_id.isdigit():
+            supplier = Supplier.objects.filter(pk=int(supplier_id)).first()
+        if supplier:
+            rows = rows.filter(supplier=supplier)
+        rows = rows.select_related('supplier')
     date_field = 'order_date' if kind == 'purchase' else 'sale_date'
     dates = {}
     for key, lookup in (('start', '__gte'), ('end', '__lte')):
@@ -344,4 +357,5 @@ def history(request, kind):
     rows = rows.order_by('-created_at', '-pk')
     return render(request, 'pandoraapp/history.html', {
         'kind': kind, 'page': Paginator(rows, 25).get_page(request.GET.get('page')),
-        'q': query, 'status': status, 'start': dates['start'], 'end': dates['end']})
+        'q': query, 'status': status, 'start': dates['start'], 'end': dates['end'],
+        'supplier': supplier, 'suppliers': suppliers})

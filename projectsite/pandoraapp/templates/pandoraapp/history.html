@@ -10,24 +10,29 @@
     <option value="completed" {% if status == 'completed' %}selected{% endif %}>Completed</option>
     <option value="cancelled" {% if status == 'cancelled' %}selected{% endif %}>Cancelled</option>
   </select></div>
+  {% if kind == 'purchase' %}<div class="filter-field"><label for="supplier">Supplier</label>
+  <select name="supplier" id="supplier"><option value="">All suppliers</option>
+  {% for item in suppliers %}<option value="{{ item.pk }}" {% if supplier and item.pk == supplier.pk %}selected{% endif %}>{{ item.name }}{% if not item.is_active %} (inactive){% endif %}</option>{% endfor %}
+  </select></div>{% endif %}
   <div class="filter-field"><label for="start">From</label><input id="start" name="start" type="date" value="{{ start|date:'Y-m-d' }}"></div>
   <div class="filter-field"><label for="end">To</label><input id="end" name="end" type="date" value="{{ end|date:'Y-m-d' }}"></div>
   <button>Search</button>
 </form>
 <table>
-  <thead><tr><th>Reference</th><th>Date</th><th>Status</th><th class="amount">Total</th></tr></thead>
+  <thead><tr><th>Reference</th>{% if kind == 'purchase' %}<th>Supplier</th>{% endif %}<th>Date</th><th>Status</th><th class="amount">Total</th></tr></thead>
   <tbody>
   {% for entry in page %}
     <tr>
     {% if kind == 'purchase' %}
       <td><a href="{% url 'pandoraapp:purchase_detail' entry.pk %}">{{ entry.reference_no }}</a></td>
+      <td>{% if rights.supplier_access %}<a href="{% url 'pandoraapp:supplier_detail' entry.supplier_id %}">{{ entry.supplier.name }}</a>{% else %}{{ entry.supplier.name }}{% endif %}</td>
       <td>{{ entry.order_date }}</td><td>{{ entry.get_status_display }}</td><td class="amount">₱{{ entry.total_cost|floatformat:"2g" }}</td>
     {% else %}
       <td><a href="{% url 'pandoraapp:sale_detail' entry.pk %}">{{ entry.receipt_no }}</a></td>
       <td>{{ entry.sale_date }}</td><td>{{ entry.get_status_display }}</td><td class="amount">₱{{ entry.total_amount|floatformat:"2g" }}</td>
     {% endif %}
     </tr>
-  {% empty %}<tr><td colspan="4">No transactions match your search.</td></tr>{% endfor %}
+  {% empty %}<tr><td colspan="5">No transactions match your search.</td></tr>{% endfor %}
   </tbody>
 </table>
 {% include 'pandoraapp/pagination.html' %}
